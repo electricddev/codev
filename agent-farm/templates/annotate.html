@@ -707,39 +707,39 @@
       }
     }
 
-    // Reload file content from disk
+    // Reload file from disk (after external edits)
     async function reloadFile() {
       // Warn if there are unsaved changes
       if (hasUnsavedChanges) {
-        if (!confirm('You have unsaved changes. Reload from disk and lose changes?')) {
+        if (!confirm('You have unsaved changes. Reload anyway?')) {
           return;
         }
       }
 
       try {
-        // The annotation server serves a single file, so just GET /file
-        const response = await fetch('/file');
+        const response = await fetch(`/content?file=${encodeURIComponent(filePath)}`);
         if (!response.ok) {
-          throw new Error(await response.text() || 'Failed to load file');
+          throw new Error(await response.text());
         }
 
         const content = await response.text();
+        fileLines = content.split('\n');
         currentContent = content;
         originalContent = content;
-        fileLines = content.split('\n');
         hasUnsavedChanges = false;
         updateUnsavedIndicator();
 
-        // Update editor if in edit mode
+        // Re-render based on current mode
         if (editMode) {
           document.getElementById('editor').value = content;
+        } else {
+          renderFile();
+          updateAnnotationsList();
         }
 
-        renderFile();
-        updateAnnotationsList();
         showNotification('Reloaded from disk');
       } catch (err) {
-        showNotification('Error reloading file: ' + err.message, 'error');
+        showNotification('Failed to reload: ' + err.message, 'error');
       }
     }
 
