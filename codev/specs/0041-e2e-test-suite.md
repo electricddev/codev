@@ -26,7 +26,7 @@ The `@cluesmith/codev` npm package has 162 unit tests that test internal functio
 3. Tests cover critical user journeys AND error cases
 4. Run in CI **before** npm publish (test the tarball)
 5. Also run post-release to verify npm registry propagation
-6. Fast enough to run on every PR (<2 minutes)
+6. Fast enough to run on every PR (<3 minutes)
 
 ## Non-Goals
 
@@ -430,7 +430,7 @@ E2E_TARBALL=$(pwd)/cluesmith-codev-*.tgz bats ../../tests/e2e/init.bats
 ## Success Criteria
 
 1. All test cases pass on both macOS and Linux
-2. Tests complete in <2 minutes
+2. Tests complete in <3 minutes
 3. Tests can run against local tarball (PR workflow) or published package (post-release)
 4. XDG sandboxing prevents pollution of dev environment
 5. Clear error output when tests fail (BATS tap output)

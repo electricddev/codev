@@ -1,0 +1,60 @@
+name: E2E Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: E2E Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install BATS
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y bats
+          else
+            brew install bats-core
+          fi
+
+      - name: Install package dependencies
+        working-directory: packages/codev
+        run: npm install
+
+      - name: Build package
+        working-directory: packages/codev
+        run: npm run build
+
+      - name: Create tarball
+        working-directory: packages/codev
+        run: npm pack
+
+      - name: Run E2E tests
+        env:
+          E2E_TARBALL: ${{ github.workspace }}/packages/codev/cluesmith-codev-*.tgz
+        run: bats tests/e2e/
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-logs-${{ matrix.os }}
+          path: |
+            packages/codev/*.tgz
+          retention-days: 7

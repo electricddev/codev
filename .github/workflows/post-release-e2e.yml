@@ -1,0 +1,88 @@
+name: Post-Release E2E Verification
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version to verify (e.g., 1.1.0)'
+        required: true
+        type: string
+
+jobs:
+  verify:
+    name: Verify Release (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install BATS
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y bats
+          else
+            brew install bats-core
+          fi
+
+      - name: Determine package version
+        id: version
+        run: |
+          if [[ -n "${{ inputs.version }}" ]]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            # Extract version from release tag (remove 'v' prefix if present)
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Wait for npm propagation
+        run: |
+          echo "Waiting 120 seconds for npm registry propagation..."
+          sleep 120
+
+      - name: Verify package available on npm
+        run: |
+          npm view @cluesmith/codev@${{ steps.version.outputs.version }}
+
+      - name: Download published package
+        run: |
+          mkdir -p /tmp/e2e-verify
+          cd /tmp/e2e-verify
+          npm pack @cluesmith/codev@${{ steps.version.outputs.version }}
+          ls -la *.tgz
+
+      - name: Set tarball path
+        id: tarball
+        run: |
+          TARBALL=$(ls /tmp/e2e-verify/*.tgz | head -1)
+          echo "path=$TARBALL" >> $GITHUB_OUTPUT
+
+      - name: Run E2E tests against published package
+        env:
+          E2E_TARBALL: ${{ steps.tarball.outputs.path }}
+        run: bats tests/e2e/
+
+      - name: Report success
+        if: success()
+        run: |
+          echo "✅ Post-release verification passed for @cluesmith/codev@${{ steps.version.outputs.version }}"
+
+      - name: Report failure
+        if: failure()
+        run: |
+          echo "❌ Post-release verification FAILED for @cluesmith/codev@${{ steps.version.outputs.version }}"
+          echo "Please investigate and consider yanking the release if critical issues found."
