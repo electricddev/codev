@@ -1,29 +1,30 @@
 #!/usr/bin/env python3
 """Consult tool - wrapper for gemini-cli, codex CLI, and claude CLI.
 
-Provides a unified interface for single-agent consultation via external AI CLIs.
+Provides a unified interface for AI consultation via external CLIs.
 Each invocation is stateless (fresh process).
 
 Usage:
-    # Original consultation mode (default)
-    consult gemini "Review this design"
-    consult codex "What do you think of this API?"
-    consult claude "Review this implementation"
-    consult pro "Review this"         # alias for gemini
-    consult gpt "Review this"         # alias for codex
-    consult opus "Review this"        # alias for claude
-    echo "Review this" | consult pro
+    consult --model <model> <subcommand> [args] [options]
 
-    # PR review mode (optimized)
-    consult pr 33                     # All models in parallel
-    consult pr 33 --model gemini      # Single model
-    consult pr 33 --all               # Explicit all models
-    consult pr 33 --dry-run           # Show what would be fetched
+Subcommands:
+    pr <number>         Review a Pull Request
+    general <query>     General consultation query
 
-For parallel consultation, run multiple consult commands in separate shells.
+Models (--model is REQUIRED):
+    gemini, pro         Google Gemini
+    codex, gpt          OpenAI Codex
+    claude, opus        Anthropic Claude
+
+Examples:
+    consult --model gemini pr 33
+    consult --model claude pr 33 --dry-run
+    consult --model pro general "Review this design"
+    echo "Review this" | consult --model gpt general
+
+For parallel consultation, run multiple commands in separate shells.
 """
 
-import concurrent.futures
 import glob as glob_module
 import json
 import os
@@ -376,9 +377,8 @@ def cleanup_old_pr_consultations(consult_dir: Path, keep_last: int = 10) -> int:
     return removed
 
 
-def do_consult(model: str, query: Optional[str], dry_run: bool) -> None:
-    """Execute a consultation with the specified model."""
-    # Lazy load paths
+def do_general(model: str, query: Optional[str], dry_run: bool) -> None:
+    """Execute a general consultation with the specified model."""
     codev_root = find_codev_root()
     role_file = codev_root / "codev" / "roles" / "consultant.md"
     log_dir = codev_root / ".consult"
@@ -395,17 +395,15 @@ def do_consult(model: str, query: Optional[str], dry_run: bool) -> None:
                 sys.exit(1)
         else:
             print("Error: No query provided", file=sys.stderr)
-            print("Usage: consult <model> <query>", file=sys.stderr)
+            print("Usage: consult --model <model> general <query>", file=sys.stderr)
             sys.exit(1)
 
     role = get_role(role_file)
 
-    # Resolve model aliases
-    resolved = MODEL_MAP.get(model.lower(), model.lower())
     # Track temp file for cleanup
     temp_system_file = None
 
-    if resolved == "gemini":
+    if model == "gemini":
         if not shutil.which("gemini"):
             print(
                 "Error: gemini-cli not found.\n"
@@ -413,8 +411,6 @@ def do_consult(model: str, query: Optional[str], dry_run: bool) -> None:
                 file=sys.stderr,
             )
             sys.exit(1)
-        # gemini-cli uses GEMINI_SYSTEM_MD env var pointing to a file
-        # Create a temp file with the role content
         temp_system_file = tempfile.NamedTemporaryFile(
             mode="w", suffix=".md", delete=False
         )
@@ -422,11 +418,9 @@ def do_consult(model: str, query: Optional[str], dry_run: bool) -> None:
         temp_system_file.close()
         cmd = ["gemini", "--yolo", query]
         env = {"GEMINI_SYSTEM_MD": temp_system_file.name}
-        # Avoid "Both GOOGLE_API_KEY and GEMINI_API_KEY are set" warning
-        # by unsetting GEMINI_API_KEY if GOOGLE_API_KEY is present
         if os.environ.get("GOOGLE_API_KEY") and os.environ.get("GEMINI_API_KEY"):
             env["GEMINI_API_KEY"] = ""
-    elif resolved == "codex":
+    elif model == "codex":
         if not shutil.which("codex"):
             print(
                 "Error: codex not found.\n"
@@ -436,7 +430,7 @@ def do_consult(model: str, query: Optional[str], dry_run: bool) -> None:
             sys.exit(1)
         cmd = ["codex", "exec", "--full-auto", query]
         env = {"CODEX_SYSTEM_MESSAGE": role}
-    elif resolved == "claude":
+    elif model == "claude":
         if not shutil.which("claude"):
             print(
                 "Error: claude not found.\n"
@@ -444,49 +438,43 @@ def do_consult(model: str, query: Optional[str], dry_run: bool) -> None:
                 file=sys.stderr,
             )
             sys.exit(1)
-        # Claude Code: prepend role to query, use prompt mode with permission skip
         full_query = f"{role}\n\n---\n\nConsultation Request:\n{query}"
         cmd = ["claude", "--print", "-p", full_query, "--dangerously-skip-permissions"]
         env = {}
     else:
-        print(
-            f"Unknown model: {model}\n"
-            f"Available: gemini, codex, claude (aliases: pro, gpt, opus)",
-            file=sys.stderr,
-        )
+        # Should not reach here - model validated in main()
+        print(f"Error: Unknown model '{model}'", file=sys.stderr)
         sys.exit(1)
 
     if dry_run:
-        print(f"Command: {' '.join(cmd)}")
+        print(f"[{model}] Would execute:")
+        print(f"  Command: {' '.join(cmd)}")
         if env:
             for key, value in env.items():
-                # Show truncated env var for long values
                 if key == "GEMINI_SYSTEM_MD":
-                    print(f"Env: {key}=<temp file with consultant role>")
+                    print(f"  Env: {key}=<temp file with consultant role>")
                 else:
                     preview = value[:50] + "..." if len(value) > 50 else value
-                    print(f"Env: {key}={preview}")
-        # Clean up temp file if created
+                    print(f"  Env: {key}={preview}")
         if temp_system_file:
             os.unlink(temp_system_file.name)
         sys.exit(0)
 
-    # Execute with passthrough stdio, handle Ctrl+C gracefully, track timing
+    # Execute with passthrough stdio
     full_env = {**os.environ, **(env or {})}
     start_time = time.time()
     try:
         result = subprocess.run(cmd, env=full_env)
         duration = time.time() - start_time
-        log_query(log_dir, resolved, query, duration)
-        print(f"\n[{resolved} completed in {duration:.1f}s]", file=sys.stderr)
+        log_query(log_dir, model, query, duration)
+        print(f"\n[{model} completed in {duration:.1f}s]", file=sys.stderr)
         sys.exit(result.returncode)
     except KeyboardInterrupt:
         duration = time.time() - start_time
-        log_query(log_dir, resolved, query, duration)
+        log_query(log_dir, model, query, duration)
         print("\nInterrupted", file=sys.stderr)
         sys.exit(130)
     finally:
-        # Clean up temp file if created
         if temp_system_file:
             try:
                 os.unlink(temp_system_file.name)
@@ -494,8 +482,8 @@ def do_consult(model: str, query: Optional[str], dry_run: bool) -> None:
                 pass
 
 
-def do_pr(number: int, model: Optional[str], dry_run: bool) -> None:
-    """Execute a PR consultation."""
+def do_pr(number: int, model: str, dry_run: bool) -> None:
+    """Execute a PR consultation with a single model."""
     codev_root = find_codev_root()
     log_dir = codev_root / ".consult"
     pr_dir = log_dir / f"pr-{str(number).zfill(4)}"
@@ -503,20 +491,8 @@ def do_pr(number: int, model: Optional[str], dry_run: bool) -> None:
     # Load .env
     load_dotenv(codev_root)
 
-    # Determine which models to run
-    if model:
-        resolved = MODEL_MAP.get(model.lower(), model.lower())
-        if resolved not in ALL_MODELS:
-            print(f"Error: Unknown model '{model}'", file=sys.stderr)
-            print(f"Available: {', '.join(ALL_MODELS)}", file=sys.stderr)
-            sys.exit(1)
-        models_to_run = [resolved]
-    else:
-        # Default to all models
-        models_to_run = ALL_MODELS
-
     print(f"[PR Review #{number}]", file=sys.stderr)
-    print(f"Models: {', '.join(models_to_run)}", file=sys.stderr)
+    print(f"Model: {model}", file=sys.stderr)
 
     if dry_run:
         print("\n[DRY RUN] Would execute:", file=sys.stderr)
@@ -527,9 +503,9 @@ def do_pr(number: int, model: Optional[str], dry_run: bool) -> None:
         print("     - gh pr view N --json files,title,headRefName", file=sys.stderr)
         print("     - Copy spec/plan if found", file=sys.stderr)
         print(f"  2. Build query with file paths", file=sys.stderr)
-        print(f"  3. Run consultation with: {', '.join(models_to_run)}", file=sys.stderr)
-        print(f"  4. Save outputs to {pr_dir}/<model>-full.txt", file=sys.stderr)
-        print(f"  5. Extract and display verdicts", file=sys.stderr)
+        print(f"  3. Run consultation with: {model}", file=sys.stderr)
+        print(f"  4. Save output to {pr_dir}/{model}-full.txt", file=sys.stderr)
+        print(f"  5. Extract and display verdict", file=sys.stderr)
         sys.exit(0)
 
     # Step 1: Fetch PR data
@@ -551,80 +527,36 @@ def do_pr(number: int, model: Optional[str], dry_run: bool) -> None:
     # Step 2: Build query
     query = build_pr_query(number, pr_dir, metadata)
 
-    # Step 3: Run consultations
-    print(f"\nConsulting {len(models_to_run)} model(s)...", file=sys.stderr)
-    consultation_start = time.time()
+    # Step 3: Run consultation
+    print(f"\n{'='*60}", file=sys.stderr)
+    print(f"[{model.upper()}] Starting consultation...", file=sys.stderr)
+    print(f"{'='*60}\n", file=sys.stderr)
 
-    results = {}
+    output_file = pr_dir / f"{model}-full.txt"
+    output, retcode, duration = run_model_consultation(
+        model, query, codev_root, output_file
+    )
+    log_query(log_dir, model, f"PR #{number} review", duration)
 
-    if len(models_to_run) == 1:
-        # Single model - run directly with streaming output
-        model_name = models_to_run[0]
-        print(f"\n{'='*60}", file=sys.stderr)
-        print(f"[{model_name.upper()}] Starting consultation...", file=sys.stderr)
-        print(f"{'='*60}\n", file=sys.stderr)
+    # Step 4: Extract and display verdict
+    verdict = extract_verdict(output)
+    verdict_file = pr_dir / f"{model}-verdict.txt"
+    verdict_file.write_text(verdict)
 
-        output_file = pr_dir / f"{model_name}-full.txt"
-        output, retcode, duration = run_model_consultation(
-            model_name, query, codev_root, output_file
-        )
-        results[model_name] = (output, retcode, duration)
-
-        log_query(log_dir, model_name, f"PR #{number} review", duration)
-
-    else:
-        # Multiple models - run in parallel
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            future_to_model = {
-                executor.submit(
-                    run_model_consultation,
-                    m,
-                    query,
-                    codev_root,
-                    pr_dir / f"{m}-full.txt",
-                ): m
-                for m in models_to_run
-            }
-
-            for future in concurrent.futures.as_completed(future_to_model):
-                model_name = future_to_model[future]
-                try:
-                    output, retcode, duration = future.result()
-                    results[model_name] = (output, retcode, duration)
-                    log_query(log_dir, model_name, f"PR #{number} review", duration)
-                    print(f"  [{model_name}] completed in {duration:.1f}s", file=sys.stderr)
-                except Exception as e:
-                    results[model_name] = (str(e), 1, 0.0)
-                    print(f"  [{model_name}] failed: {e}", file=sys.stderr)
-
-    consultation_duration = time.time() - consultation_start
-
-    # Step 4: Extract and display verdicts
     print(f"\n{'='*60}")
-    print("VERDICTS")
+    print(f"VERDICT [{model.upper()}] ({duration:.1f}s)")
     print(f"{'='*60}")
-
-    for model_name in models_to_run:
-        if model_name in results:
-            output, retcode, duration = results[model_name]
-            verdict = extract_verdict(output)
-
-            # Save verdict to file
-            verdict_file = pr_dir / f"{model_name}-verdict.txt"
-            verdict_file.write_text(verdict)
-
-            print(f"\n[{model_name.upper()}] ({duration:.1f}s)")
-            print("-" * 40)
-            print(verdict)
+    print(verdict)
 
     # Step 5: Summary
-    total_duration = fetch_duration + consultation_duration
+    total_duration = fetch_duration + duration
     print(f"\n{'='*60}")
     print("SUMMARY")
     print(f"{'='*60}")
     print(f"PR: #{number}")
+    print(f"Model: {model}")
     print(f"Pre-fetch: {fetch_duration:.1f}s")
-    print(f"Consultation: {consultation_duration:.1f}s")
+    print(f"Consultation: {duration:.1f}s")
     print(f"Total: {total_duration:.1f}s")
     print(f"Output: {pr_dir}/")
 
@@ -634,134 +566,171 @@ def do_pr(number: int, model: Optional[str], dry_run: bool) -> None:
         print(f"Cleaned up {removed} old PR consultation(s)", file=sys.stderr)
 
 
-def main():
-    """Main entry point with manual argument parsing for hybrid CLI."""
-    # Check for --help at any position for the main command
-    if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] in ["--help", "-h"]):
-        print("""Usage: consult <model> <query> [OPTIONS]
-       consult pr <number> [OPTIONS]
+def print_help():
+    """Print main help message."""
+    print("""Usage: consult --model <model> <subcommand> [args] [options]
 
 Consult external AI models for second opinions.
 
-Commands:
-  consult <model> <query>   Consult a model with a query
-  consult pr <number>       Review a Pull Request with optimized fetching
+Global Options:
+  -m, --model MODEL      Model to use (REQUIRED)
+                         Models: gemini, codex, claude (aliases: pro, gpt, opus)
+  -h, --help             Show this message and exit
 
-Arguments (default command):
-  model                     Model: gemini, codex, claude (or aliases: pro, gpt, opus)
-  query                     Query (or pipe via stdin)
+Subcommands:
+  pr <number>            Review a Pull Request
+  general <query>        General consultation query
 
-Options (default command):
-  -n, --dry-run            Print command without executing
-  -h, --help               Show this message and exit
-
-PR Subcommand Options:
-  -m, --model MODEL        Specific model (default: all three in parallel)
-  -n, --dry-run            Show what would be fetched without executing
+Subcommand Options:
+  -n, --dry-run          Show what would execute without running
 
 Examples:
-  consult gemini "Review this architecture"
-  consult pro "Review this design"
-  echo "Review this" | consult gpt
-  consult pr 33
-  consult pr 33 --model gemini
-  consult pr 33 --dry-run
+  consult --model gemini pr 33
+  consult --model claude pr 33 --dry-run
+  consult --model pro general "Review this design"
+  echo "Review this" | consult --model gpt general
+
+For parallel consultation, run multiple commands in separate shells.
 """)
+
+
+def main():
+    """Main entry point with standardized subcommand pattern."""
+    args = sys.argv[1:]
+
+    # Check for help with no args
+    if not args or args == ["--help"] or args == ["-h"]:
+        print_help()
         sys.exit(0)
 
-    # Check if first arg is "pr" subcommand
-    if len(sys.argv) >= 2 and sys.argv[1].lower() == "pr":
-        # PR subcommand
-        args = sys.argv[2:]
+    # Parse global --model option first (before subcommand)
+    model = None
+    remaining_args = []
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg in ["--model", "-m"]:
+            if i + 1 >= len(args):
+                print("Error: --model requires a value", file=sys.stderr)
+                sys.exit(1)
+            model = args[i + 1]
+            i += 2
+        elif arg in ["--help", "-h"] and not remaining_args:
+            # Only show main help if --help comes before subcommand
+            print_help()
+            sys.exit(0)
+        else:
+            # Collect everything else (subcommand and its args)
+            remaining_args = args[i:]
+            break
 
-        # Check for help
-        if "--help" in args or "-h" in args:
-            print("""Usage: consult pr <number> [OPTIONS]
+    # Model is required
+    if not model:
+        print("Error: --model is required", file=sys.stderr)
+        print("Usage: consult --model <model> <subcommand> [args]", file=sys.stderr)
+        sys.exit(1)
 
-Consult on a Pull Request with optimized data fetching.
+    # Validate model
+    resolved_model = MODEL_MAP.get(model.lower(), model.lower())
+    if resolved_model not in ALL_MODELS:
+        print(f"Error: Unknown model '{model}'", file=sys.stderr)
+        print(f"Available: {', '.join(ALL_MODELS)} (aliases: pro, gpt, opus)", file=sys.stderr)
+        sys.exit(1)
+
+    # Need a subcommand
+    if not remaining_args:
+        print("Error: Subcommand required (pr or general)", file=sys.stderr)
+        print("Usage: consult --model <model> <subcommand> [args]", file=sys.stderr)
+        sys.exit(1)
+
+    subcommand = remaining_args[0].lower()
+    sub_args = remaining_args[1:]
+
+    if subcommand == "pr":
+        # Parse PR subcommand
+        if "--help" in sub_args or "-h" in sub_args:
+            print("""Usage: consult --model <model> pr <number> [options]
+
+Review a Pull Request with optimized data fetching.
 
 Pre-fetches PR data (info, comments, diff, files) and passes file paths
 to the consultant model, reducing git command overhead.
 
 Arguments:
-  number                   PR number to review [required]
+  number                 PR number to review [required]
 
 Options:
-  -m, --model MODEL        Specific model (gemini, codex, claude)
-  -n, --dry-run            Show what would be fetched without executing
-  -h, --help               Show this message and exit
+  -n, --dry-run          Show what would be fetched without executing
+  -h, --help             Show this message and exit
 
 Examples:
-  consult pr 33                  # All models in parallel (default)
-  consult pr 33 --model gemini   # Single model
-  consult pr 33 --dry-run        # Show what would be fetched
+  consult --model gemini pr 33
+  consult --model claude pr 33 --dry-run
 """)
             sys.exit(0)
 
-        # Parse PR number
-        if not args:
+        if not sub_args:
             print("Error: PR number required", file=sys.stderr)
-            print("Usage: consult pr <number>", file=sys.stderr)
+            print("Usage: consult --model <model> pr <number>", file=sys.stderr)
             sys.exit(1)
 
         try:
-            pr_number = int(args[0])
+            pr_number = int(sub_args[0])
         except ValueError:
-            print(f"Error: Invalid PR number '{args[0]}'", file=sys.stderr)
+            print(f"Error: Invalid PR number '{sub_args[0]}'", file=sys.stderr)
             sys.exit(1)
 
-        # Parse options
-        model = None
+        # Parse PR options
         dry_run = False
-
-        i = 1
-        while i < len(args):
-            arg = args[i]
-            if arg in ["--model", "-m"]:
-                if i + 1 >= len(args):
-                    print("Error: --model requires a value", file=sys.stderr)
-                    sys.exit(1)
-                model = args[i + 1]
-                i += 2
-            elif arg in ["--dry-run", "-n"]:
+        for arg in sub_args[1:]:
+            if arg in ["--dry-run", "-n"]:
                 dry_run = True
-                i += 1
             else:
                 print(f"Error: Unknown option '{arg}'", file=sys.stderr)
                 sys.exit(1)
 
-        do_pr(pr_number, model, dry_run)
+        do_pr(pr_number, resolved_model, dry_run)
 
-    else:
-        # Default consult command
-        args = sys.argv[1:]
+    elif subcommand == "general":
+        # Parse general subcommand
+        if "--help" in sub_args or "-h" in sub_args:
+            print("""Usage: consult --model <model> general <query> [options]
 
-        # Parse options
+General consultation query.
+
+Arguments:
+  query                  The query to send (or pipe via stdin)
+
+Options:
+  -n, --dry-run          Show what would execute without running
+  -h, --help             Show this message and exit
+
+Examples:
+  consult --model gemini general "Review this architecture"
+  consult --model pro general "What do you think of this API?"
+  echo "Review this code" | consult --model gpt general
+""")
+            sys.exit(0)
+
+        # Parse general options
         dry_run = False
-        positional_args = []
-
-        i = 0
-        while i < len(args):
-            arg = args[i]
+        query_parts = []
+        for arg in sub_args:
             if arg in ["--dry-run", "-n"]:
                 dry_run = True
-                i += 1
             elif arg.startswith("-"):
                 print(f"Error: Unknown option '{arg}'", file=sys.stderr)
                 sys.exit(1)
             else:
-                positional_args.append(arg)
-                i += 1
+                query_parts.append(arg)
 
-        if len(positional_args) < 1:
-            print("Error: Model is required", file=sys.stderr)
-            print("Usage: consult <model> <query>", file=sys.stderr)
-            sys.exit(1)
+        query = " ".join(query_parts) if query_parts else None
+        do_general(resolved_model, query, dry_run)
 
-        model = positional_args[0]
-        query = positional_args[1] if len(positional_args) > 1 else None
-
-        do_consult(model, query, dry_run)
+    else:
+        print(f"Error: Unknown subcommand '{subcommand}'", file=sys.stderr)
+        print("Available subcommands: pr, general", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
