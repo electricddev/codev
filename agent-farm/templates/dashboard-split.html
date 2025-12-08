@@ -291,27 +291,9 @@
       }
     }
 
-    .tab .open-external {
-      opacity: 0.4;
-      cursor: pointer;
-      padding: 2px 4px;
-      margin-left: 4px;
-      font-size: 12px;
-      border-radius: 3px;
-    }
-
-    .tab:hover .open-external {
-      opacity: 0.8;
-    }
-
-    .tab .open-external:hover {
-      opacity: 1;
-      background: rgba(255, 255, 255, 0.1);
-    }
-
     .tab .close {
       opacity: 0.6;  /* Always clearly visible */
-      margin-left: 4px;
+      margin-left: 6px;
       font-size: 16px;
       font-weight: 500;
       color: var(--text-secondary);
@@ -987,13 +969,6 @@
             <span class="icon">${icon}</span>
             <span class="name">${tab.name}</span>
             ${statusDot}
-            <span class="open-external"
-                  onclick="event.stopPropagation(); openInNewTab('${tab.id}')"
-                  title="Open in new tab"
-                  role="button"
-                  tabindex="0"
-                  aria-label="Open ${tab.name} in new tab"
-                  onkeydown="if(event.key==='Enter'||event.key===' '){event.stopPropagation();openInNewTab('${tab.id}')}">↗</span>
             <span class="close"
                   onclick="event.stopPropagation(); closeTab('${tab.id}', event)"
                   role="button"
