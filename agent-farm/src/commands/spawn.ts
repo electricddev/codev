@@ -236,11 +236,11 @@ async function startBuilderSession(
     writeFileSync(roleFile, roleContent);
     logger.info(`Loaded role (${roleSource})`);
     scriptContent = `#!/bin/bash
-exec ${baseCmd} --append-system-prompt "$(cat '${roleFile}')" "\$(cat '${promptFile}')"
+exec ${baseCmd} --append-system-prompt "$(cat '${roleFile}')" "$(cat '${promptFile}')"
 `;
   } else {
     scriptContent = `#!/bin/bash
-exec ${baseCmd} "\$(cat '${promptFile}')"
+exec ${baseCmd} "$(cat '${promptFile}')"
 `;
   }
 
@@ -381,7 +381,7 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
   }
   initialPrompt += ` Start by reading the spec${hasPlan ? ' and plan' : ''}, then begin implementation.`;
 
-  const builderPrompt = `You are a Builder. Read codev/roles/builder.md for your full role definition. ${initialPrompt}`;
+  const builderPrompt = initialPrompt;
 
   // Load role
   const role = options.noRole ? null : loadRolePrompt(config, 'builder');
@@ -446,7 +446,7 @@ async function spawnTask(options: SpawnOptions, config: Config): Promise<void> {
     prompt += `\n\nRelevant files to consider:\n${options.files.map(f => `- ${f}`).join('\n')}`;
   }
 
-  const builderPrompt = `You are a Builder. Read codev/roles/builder.md for your full role definition. ${prompt}`;
+  const builderPrompt = prompt;
 
   // Load role
   const role = options.noRole ? null : loadRolePrompt(config, 'builder');

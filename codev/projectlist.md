@@ -123,6 +123,34 @@ Projects currently in development (conceived through committed), sorted by prior
 
 ```yaml
 # High Priority
+  - id: "0039"
+    title: "Codev CLI (First-Class Command)"
+    summary: "Unified codev command as primary entry point: init, adopt, doctor, update, tower, consult"
+    status: implementing
+    priority: high
+    release: null
+    files:
+      spec: codev/specs/0039-codev-cli.md
+      plan: codev/plans/0039-codev-cli.md
+      review: null
+    dependencies: ["0005", "0022"]
+    tags: [cli, npm, architecture]
+    notes: "4-way reviewed. Decisions: MERGE agent-farm, PORT consult to TS, SEPARATE binaries. ~3-4 days effort."
+
+  - id: "0040"
+    title: "TICK as SPIDER Amendment"
+    summary: "Rework TICK to be amendments to existing SPIDER specs/plans rather than a separate protocol"
+    status: specified
+    priority: high
+    release: null
+    files:
+      spec: codev/specs/0040-tick-as-spider-amendment.md
+      plan: null
+      review: null
+    dependencies: []
+    tags: [protocols, architecture]
+    notes: "Human approved 2025-12-08. 3-way reviewed. Ready for planning."
+
   - id: "0014"
     title: "Flexible Builder Spawning"
     summary: "Generalize spawn command to accept natural language instructions, not just project specs"
@@ -162,9 +190,10 @@ Projects currently in development (conceived through committed), sorted by prior
       spec: codev/specs/0022-consult-tool-stateless.md
       plan: codev/plans/0022-consult-tool-stateless.md
       review: null
+    ticks: [001]
     dependencies: []
     tags: [architecture, agents, consultation]
-    notes: "Merged PR 30. Python/Typer CLI at codev/bin/consult. Consultant role as collaborative partner. Consulted GPT-5 and Gemini Pro."
+    notes: "Merged PR 30. Python/Typer CLI at codev/bin/consult. Consultant role as collaborative partner. Consulted GPT-5 and Gemini Pro. TICK-001: Architect-mediated PR reviews (2025-12-08)."
 
   - id: "0024"
     title: "Builder Event Notifications"
@@ -728,7 +757,7 @@ Projects that are paused or canceled.
 
 ## Next Available Number
 
-**0039** - Reserve this number for your next project
+**0040** - Reserve this number for your next project
 
 ---
 
