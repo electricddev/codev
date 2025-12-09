@@ -1,7 +1,7 @@
 /**
- * codev consult - AI consultation with external models
+ * consult - AI consultation with external models
  *
- * Port of codev/bin/consult (Python) to TypeScript
+ * Provides unified interface to gemini-cli, codex, and claude CLIs.
  */
 
 import * as fs from 'node:fs';
@@ -9,6 +9,7 @@ import * as path from 'node:path';
 import { spawn, execSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import chalk from 'chalk';
+import { resolveCodevFile, readCodevFile, findProjectRoot } from '../../lib/skeleton.js';
 
 // Model configuration
 interface ModelConfig {
@@ -19,7 +20,9 @@ interface ModelConfig {
 
 const MODEL_CONFIGS: Record<string, ModelConfig> = {
   gemini: { cli: 'gemini', args: ['--yolo'], envVar: 'GEMINI_SYSTEM_MD' },
-  codex: { cli: 'codex', args: ['exec', '--full-auto'], envVar: 'CODEX_SYSTEM_MESSAGE' },
+  // Codex uses experimental_instructions_file config flag (not env var)
+  // See: https://github.com/openai/codex/discussions/3896
+  codex: { cli: 'codex', args: ['exec', '--full-auto'], envVar: null },
   claude: { cli: 'claude', args: ['--print', '-p'], envVar: null },
 };
 
@@ -38,38 +41,26 @@ interface ConsultOptions {
 }
 
 /**
- * Find the codev root directory
+ * Load the consultant role.
+ * Checks local codev/roles/consultant.md first, then falls back to embedded skeleton.
  */
-function findCodevRoot(): string {
-  let current = process.cwd();
-
-  while (current !== path.dirname(current)) {
-    const roleFile = path.join(current, 'codev', 'roles', 'consultant.md');
-    if (fs.existsSync(roleFile)) {
-      return current;
-    }
-    current = path.dirname(current);
+function loadRole(projectRoot: string): string {
+  const role = readCodevFile('roles/consultant.md', projectRoot);
+  if (!role) {
+    throw new Error(
+      'consultant.md not found.\n' +
+      'Checked: local codev/roles/consultant.md and embedded skeleton.\n' +
+      'Run from a codev-enabled project or install @cluesmith/codev globally.'
+    );
   }
-
-  return process.cwd();
-}
-
-/**
- * Load the consultant role
- */
-function loadRole(codevRoot: string): string {
-  const roleFile = path.join(codevRoot, 'codev', 'roles', 'consultant.md');
-  if (!fs.existsSync(roleFile)) {
-    throw new Error(`Role file not found: ${roleFile}\nAre you in a codev-enabled project?`);
-  }
-  return fs.readFileSync(roleFile, 'utf-8');
+  return role;
 }
 
 /**
  * Load .env file if it exists
  */
-function loadDotenv(codevRoot: string): void {
-  const envFile = path.join(codevRoot, '.env');
+function loadDotenv(projectRoot: string): void {
+  const envFile = path.join(projectRoot, '.env');
   if (!fs.existsSync(envFile)) return;
 
   const content = fs.readFileSync(envFile, 'utf-8');
@@ -99,8 +90,8 @@ function loadDotenv(codevRoot: string): void {
 /**
  * Find a spec file by number
  */
-function findSpec(codevRoot: string, number: number): string | null {
-  const specsDir = path.join(codevRoot, 'codev', 'specs');
+function findSpec(projectRoot: string, number: number): string | null {
+  const specsDir = path.join(projectRoot, 'codev', 'specs');
   const pattern = String(number).padStart(4, '0');
 
   if (fs.existsSync(specsDir)) {
@@ -117,8 +108,8 @@ function findSpec(codevRoot: string, number: number): string | null {
 /**
  * Find a plan file by number
  */
-function findPlan(codevRoot: string, number: number): string | null {
-  const plansDir = path.join(codevRoot, 'codev', 'plans');
+function findPlan(projectRoot: string, number: number): string | null {
+  const plansDir = path.join(projectRoot, 'codev', 'plans');
   const pattern = String(number).padStart(4, '0');
 
   if (fs.existsSync(plansDir)) {
@@ -135,9 +126,9 @@ function findPlan(codevRoot: string, number: number): string | null {
 /**
  * Log query to history file
  */
-function logQuery(codevRoot: string, model: string, query: string, duration?: number): void {
+function logQuery(projectRoot: string, model: string, query: string, duration?: number): void {
   try {
-    const logDir = path.join(codevRoot, '.consult');
+    const logDir = path.join(projectRoot, '.consult');
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
     }
@@ -171,10 +162,10 @@ function commandExists(cmd: string): boolean {
 async function runConsultation(
   model: string,
   query: string,
-  codevRoot: string,
+  projectRoot: string,
   dryRun: boolean
 ): Promise<void> {
-  const role = loadRole(codevRoot);
+  const role = loadRole(projectRoot);
   const config = MODEL_CONFIGS[model];
 
   if (!config) {
@@ -205,9 +196,18 @@ async function runConsultation(
 
     cmd = [config.cli, ...config.args, query];
   } else if (model === 'codex') {
-    // Codex uses CODEX_SYSTEM_MESSAGE env var
-    env['CODEX_SYSTEM_MESSAGE'] = role;
-    cmd = [config.cli, ...config.args, query];
+    // Codex uses experimental_instructions_file config flag (not env var)
+    // This is the official approach per https://github.com/openai/codex/discussions/3896
+    tempFile = path.join(tmpdir(), `codev-role-${Date.now()}.md`);
+    fs.writeFileSync(tempFile, role);
+    cmd = [
+      config.cli,
+      'exec',
+      '-c', `experimental_instructions_file=${tempFile}`,
+      '-c', 'model_reasoning_effort=low', // Faster responses (10-20% improvement)
+      '--full-auto',
+      query,
+    ];
   } else if (model === 'claude') {
     // Claude gets role prepended to query
     const fullQuery = `${role}\n\n---\n\nConsultation Request:\n${query}`;
@@ -245,7 +245,7 @@ async function runConsultation(
 
     proc.on('close', (code) => {
       const duration = (Date.now() - startTime) / 1000;
-      logQuery(codevRoot, model, query, duration);
+      logQuery(projectRoot, model, query, duration);
 
       if (tempFile && fs.existsSync(tempFile)) {
         fs.unlinkSync(tempFile);
@@ -272,8 +272,8 @@ async function runConsultation(
 /**
  * Build query for PR review
  */
-function buildPRQuery(prNumber: number, codevRoot: string): string {
-  const dataDir = path.join(codevRoot, '.consult', `pr-${String(prNumber).padStart(4, '0')}`);
+function buildPRQuery(prNumber: number, projectRoot: string): string {
+  const dataDir = path.join(projectRoot, '.consult', `pr-${String(prNumber).padStart(4, '0')}`);
 
   return `Review Pull Request #${prNumber}
 
@@ -389,8 +389,8 @@ export async function consult(options: ConsultOptions): Promise<void> {
     throw new Error(`Unknown model: ${modelInput}\nValid models: ${validModels.join(', ')}`);
   }
 
-  const codevRoot = findCodevRoot();
-  loadDotenv(codevRoot);
+  const projectRoot = findProjectRoot();
+  loadDotenv(projectRoot);
 
   console.error(`[${subcommand} review]`);
   console.error(`Model: ${model}`);
@@ -400,29 +400,29 @@ export async function consult(options: ConsultOptions): Promise<void> {
   switch (subcommand.toLowerCase()) {
     case 'pr': {
       if (args.length === 0) {
-        throw new Error('PR number required\nUsage: codev consult -m <model> pr <number>');
+        throw new Error('PR number required\nUsage: consult -m <model> pr <number>');
       }
       const prNumber = parseInt(args[0], 10);
       if (isNaN(prNumber)) {
         throw new Error(`Invalid PR number: ${args[0]}`);
       }
-      query = buildPRQuery(prNumber, codevRoot);
+      query = buildPRQuery(prNumber, projectRoot);
       break;
     }
 
     case 'spec': {
       if (args.length === 0) {
-        throw new Error('Spec number required\nUsage: codev consult -m <model> spec <number>');
+        throw new Error('Spec number required\nUsage: consult -m <model> spec <number>');
       }
       const specNumber = parseInt(args[0], 10);
       if (isNaN(specNumber)) {
         throw new Error(`Invalid spec number: ${args[0]}`);
       }
-      const specPath = findSpec(codevRoot, specNumber);
+      const specPath = findSpec(projectRoot, specNumber);
       if (!specPath) {
         throw new Error(`Spec ${specNumber} not found`);
       }
-      const planPath = findPlan(codevRoot, specNumber);
+      const planPath = findPlan(projectRoot, specNumber);
       query = buildSpecQuery(specPath, planPath);
       console.error(`Spec: ${specPath}`);
       if (planPath) console.error(`Plan: ${planPath}`);
@@ -431,17 +431,17 @@ export async function consult(options: ConsultOptions): Promise<void> {
 
     case 'plan': {
       if (args.length === 0) {
-        throw new Error('Plan number required\nUsage: codev consult -m <model> plan <number>');
+        throw new Error('Plan number required\nUsage: consult -m <model> plan <number>');
       }
       const planNumber = parseInt(args[0], 10);
       if (isNaN(planNumber)) {
         throw new Error(`Invalid plan number: ${args[0]}`);
       }
-      const planPath = findPlan(codevRoot, planNumber);
+      const planPath = findPlan(projectRoot, planNumber);
       if (!planPath) {
         throw new Error(`Plan ${planNumber} not found`);
       }
-      const specPath = findSpec(codevRoot, planNumber);
+      const specPath = findSpec(projectRoot, planNumber);
       query = buildPlanQuery(planPath, specPath);
       console.error(`Plan: ${planPath}`);
       if (specPath) console.error(`Spec: ${specPath}`);
@@ -450,7 +450,7 @@ export async function consult(options: ConsultOptions): Promise<void> {
 
     case 'general': {
       if (args.length === 0) {
-        throw new Error('Query required\nUsage: codev consult -m <model> general "<query>"');
+        throw new Error('Query required\nUsage: consult -m <model> general "<query>"');
       }
       query = args.join(' ');
       break;
@@ -466,5 +466,5 @@ export async function consult(options: ConsultOptions): Promise<void> {
   console.error('='.repeat(60));
   console.error('');
 
-  await runConsultation(model, query, codevRoot, dryRun);
+  await runConsultation(model, query, projectRoot, dryRun);
 }

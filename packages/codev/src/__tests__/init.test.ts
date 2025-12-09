@@ -65,11 +65,12 @@ describe('init command', () => {
         expect(fs.existsSync(path.join(projectDir, 'AGENTS.md'))).toBe(true);
         expect(fs.existsSync(path.join(projectDir, '.gitignore'))).toBe(true);
 
-        // Verify user data directories
+        // Verify user data directories (minimal structure)
         expect(fs.existsSync(path.join(projectDir, 'codev', 'specs'))).toBe(true);
         expect(fs.existsSync(path.join(projectDir, 'codev', 'plans'))).toBe(true);
         expect(fs.existsSync(path.join(projectDir, 'codev', 'reviews'))).toBe(true);
-        expect(fs.existsSync(path.join(projectDir, 'codev', 'resources'))).toBe(true);
+        expect(fs.existsSync(path.join(projectDir, 'codev', 'projectlist.md'))).toBe(true);
+        // Note: resources/ is NOT created in minimal structure (created by user if needed)
       } finally {
         process.chdir(originalCwd);
       }

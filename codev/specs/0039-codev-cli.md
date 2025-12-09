@@ -346,10 +346,67 @@ The original spec called for porting consult to TypeScript, but the Python imple
 
    Or better: just delete it and update documentation to use `codev consult` or the `consult` binary from the npm package.
 
-### Success Criteria
+### Success Criteria (TICK-001: Consult Consolidation)
 
-- [ ] TypeScript consult has Codex `experimental_instructions_file` approach
-- [ ] TypeScript consult has `model_reasoning_effort=low` tuning
-- [ ] Python `codev/bin/consult` deleted
-- [ ] All existing `consult` invocations work via TypeScript version
-- [ ] Tests updated/passing
+- [x] TypeScript consult has Codex `experimental_instructions_file` approach
+- [x] TypeScript consult has `model_reasoning_effort=low` tuning
+- [x] Python `codev/bin/consult` deleted (shim remains for backwards compat)
+- [x] All existing `consult` invocations work via TypeScript version
+- [x] Tests updated/passing
+
+---
+
+## TICK Amendment: 2025-12-09 (TICK-002)
+
+### Problem
+
+Currently `codev init` copies the entire `codev-skeleton/` into each project, including:
+- `protocols/` (spider, tick, experiment, maintain)
+- `roles/` (architect, builder, consultant)
+- `templates/`
+- `DEPENDENCIES.md`
+
+This creates problems:
+1. **Clutter**: Users see files they never touch (protocols, roles)
+2. **Duplication**: Three copies of skeleton (codev-skeleton/, codev/, packages/codev/templates/)
+3. **Sync issues**: Updates require manual copying across all locations
+4. **Confusion**: Users don't know what they can/should modify
+
+### Amendment Scope
+
+**Embedded skeleton with local overrides**:
+
+1. **Build-time embedding**: `codev-skeleton/` is embedded in the npm package at build time
+2. **Minimal init**: `codev init` only creates user-facing directories:
+   ```
+   codev/
+   ├── specs/
+   ├── plans/
+   ├── reviews/
+   └── config.json (optional)
+   ```
+3. **Runtime resolution**: `af` and `consult` look for files in order:
+   - Local `codev/` directory (user overrides)
+   - Embedded skeleton in npm package (defaults)
+4. **Optional customization**: Users can create local overrides only when needed:
+   ```bash
+   # To customize spider protocol:
+   codev eject protocols/spider
+   # Creates codev/protocols/spider/protocol.md from embedded version
+   ```
+
+### Benefits
+
+- Clean project directories (only specs/plans/reviews visible)
+- Single source of truth (codev-skeleton/)
+- Easy updates (npm update, no file copying)
+- Customization when needed (eject pattern)
+
+### Success Criteria (TICK-002)
+
+- [ ] `packages/codev/templates/` removed (use codev-skeleton/ directly at build)
+- [ ] `codev init` creates minimal directory structure
+- [ ] `af` resolves roles from embedded skeleton, local overrides take precedence
+- [ ] `consult` resolves consultant.md from embedded skeleton, local overrides take precedence
+- [ ] `codev eject <path>` command to copy embedded file locally for customization
+- [ ] Existing projects continue to work (local files still take precedence)

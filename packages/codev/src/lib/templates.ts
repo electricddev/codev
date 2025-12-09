@@ -11,23 +11,24 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Get the path to the embedded templates directory
+ * Get the path to the embedded skeleton directory
+ * (contains protocols, roles, agents - the codev framework files)
  */
 export function getTemplatesDir(): string {
-  // In development: packages/codev/templates
-  // In installed: node_modules/@cluesmith/codev/templates
-  const templatesDir = path.resolve(__dirname, '../../templates');
-  if (fs.existsSync(templatesDir)) {
-    return templatesDir;
+  // In development: packages/codev/skeleton
+  // In installed: node_modules/@cluesmith/codev/skeleton
+  const skeletonDir = path.resolve(__dirname, '../../skeleton');
+  if (fs.existsSync(skeletonDir)) {
+    return skeletonDir;
   }
 
   // Fallback: check dist location
-  const distTemplatesDir = path.resolve(__dirname, '../../../templates');
-  if (fs.existsSync(distTemplatesDir)) {
-    return distTemplatesDir;
+  const distSkeletonDir = path.resolve(__dirname, '../../../skeleton');
+  if (fs.existsSync(distSkeletonDir)) {
+    return distSkeletonDir;
   }
 
-  throw new Error('Templates directory not found. Package may be corrupted.');
+  throw new Error('Skeleton directory not found. Package may be corrupted.');
 }
 
 /**

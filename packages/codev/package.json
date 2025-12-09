@@ -11,10 +11,11 @@
   "files": [
     "dist",
     "bin",
-    "templates"
+    "skeleton"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy-skeleton",
+    "copy-skeleton": "rm -rf skeleton && cp -r ../../codev-skeleton skeleton",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
     "test": "vitest",

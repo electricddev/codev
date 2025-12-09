@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import type { Config, UserConfig, ResolvedCommands } from '../types.js';
 import { getProjectPorts } from './port-registry.js';
+import { getSkeletonDir } from '../../lib/skeleton.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -116,7 +117,7 @@ function getServersDir(): string {
 }
 
 /**
- * Get the roles directory (from codev/roles/ or config override)
+ * Get the roles directory (from codev/roles/, config override, or embedded skeleton)
  */
 function getRolesDir(projectRoot: string, userConfig: UserConfig | null): string {
   // Check config.json override
@@ -127,14 +128,20 @@ function getRolesDir(projectRoot: string, userConfig: UserConfig | null): string
     }
   }
 
-  // Default: codev/roles/ (canonical location)
+  // Try local codev/roles/ first
   const rolesPath = resolve(projectRoot, 'codev/roles');
   if (existsSync(rolesPath)) {
     return rolesPath;
   }
 
-  // Fail fast if roles not found
-  throw new Error(`Roles directory not found: ${rolesPath}`);
+  // Fall back to embedded skeleton
+  const skeletonRolesPath = resolve(getSkeletonDir(), 'roles');
+  if (existsSync(skeletonRolesPath)) {
+    return skeletonRolesPath;
+  }
+
+  // This should not happen if the package is installed correctly
+  throw new Error(`Roles directory not found in local codev/roles/ or embedded skeleton`);
 }
 
 /**

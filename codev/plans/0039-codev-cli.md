@@ -504,10 +504,169 @@ chmod +x codev/bin/consult
 - Ensure e2e consult tests work with TypeScript version
 - Remove any Python-specific test helpers
 
-### Exit Criteria (Amendment)
+### Exit Criteria (TICK-001)
 
-- [ ] `codev consult --model codex spec 39` uses `experimental_instructions_file`
-- [ ] `codev consult --model codex` uses `model_reasoning_effort=low`
-- [ ] Python `codev/bin/consult` is gone (or is just a shim)
-- [ ] All consult tests pass
-- [ ] Documentation updated
+- [x] `consult --model codex spec 39` uses `experimental_instructions_file`
+- [x] `consult --model codex` uses `model_reasoning_effort=low`
+- [x] Python `codev/bin/consult` is gone (shim remains for backwards compat)
+- [x] All consult tests pass
+- [x] Documentation updated
+
+---
+
+## Phase 9: Embedded Skeleton with Local Overrides (TICK-002)
+
+### 9.1 Create skeleton resolver utility
+
+```typescript
+// src/lib/skeleton.ts
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Get path to embedded skeleton directory
+ */
+export function getSkeletonDir(): string {
+  // In built package: dist/lib/skeleton.js -> ../../skeleton/
+  // The skeleton is copied to packages/codev/skeleton/ at build time
+  return path.resolve(__dirname, '../../skeleton');
+}
+
+/**
+ * Resolve a codev file, checking local first then embedded skeleton
+ */
+export function resolveCodevFile(relativePath: string, projectRoot?: string): string | null {
+  const root = projectRoot || findProjectRoot();
+
+  // 1. Check local codev/ directory first
+  const localPath = path.join(root, 'codev', relativePath);
+  if (fs.existsSync(localPath)) {
+    return localPath;
+  }
+
+  // 2. Fall back to embedded skeleton
+  const embeddedPath = path.join(getSkeletonDir(), relativePath);
+  if (fs.existsSync(embeddedPath)) {
+    return embeddedPath;
+  }
+
+  return null;
+}
+
+/**
+ * Find project root by looking for codev/ directory or .git
+ */
+function findProjectRoot(): string {
+  let current = process.cwd();
+  while (current !== path.dirname(current)) {
+    if (fs.existsSync(path.join(current, 'codev')) ||
+        fs.existsSync(path.join(current, '.git'))) {
+      return current;
+    }
+    current = path.dirname(current);
+  }
+  return process.cwd();
+}
+```
+
+### 9.2 Update consult to use resolver
+
+```typescript
+// src/commands/consult/index.ts
+import { resolveCodevFile } from '../../lib/skeleton.js';
+
+function loadRole(): string {
+  const rolePath = resolveCodevFile('roles/consultant.md');
+  if (!rolePath) {
+    throw new Error('consultant.md not found in local codev/ or embedded skeleton');
+  }
+  return fs.readFileSync(rolePath, 'utf-8');
+}
+```
+
+### 9.3 Update af to use resolver
+
+Key files that need resolution:
+- `roles/builder.md`
+- `roles/architect.md`
+- `protocols/spider/protocol.md`
+- `protocols/tick/protocol.md`
+- `config.json`
+
+### 9.4 Update build process
+
+```json
+// package.json scripts
+{
+  "scripts": {
+    "build": "tsc && npm run copy-skeleton",
+    "copy-skeleton": "cp -r ../../codev-skeleton skeleton/"
+  }
+}
+```
+
+### 9.5 Update codev init
+
+```typescript
+// src/commands/init.ts
+export async function init(projectName: string) {
+  const targetDir = path.resolve(projectName);
+
+  // Create minimal structure only
+  fs.mkdirSync(path.join(targetDir, 'codev', 'specs'), { recursive: true });
+  fs.mkdirSync(path.join(targetDir, 'codev', 'plans'), { recursive: true });
+  fs.mkdirSync(path.join(targetDir, 'codev', 'reviews'), { recursive: true });
+
+  // Copy only CLAUDE.md and AGENTS.md templates
+  // (protocols, roles, etc. come from embedded skeleton at runtime)
+}
+```
+
+### 9.6 Add codev eject command
+
+```typescript
+// src/commands/eject.ts
+import { getSkeletonDir, resolveCodevFile } from '../lib/skeleton.js';
+
+export async function eject(relativePath: string) {
+  const skeletonPath = path.join(getSkeletonDir(), relativePath);
+  const localPath = path.join(process.cwd(), 'codev', relativePath);
+
+  if (!fs.existsSync(skeletonPath)) {
+    throw new Error(`${relativePath} not found in skeleton`);
+  }
+
+  if (fs.existsSync(localPath)) {
+    throw new Error(`${relativePath} already exists locally. Delete it first to re-eject.`);
+  }
+
+  fs.mkdirSync(path.dirname(localPath), { recursive: true });
+  fs.copyFileSync(skeletonPath, localPath);
+  console.log(`Ejected ${relativePath} to codev/${relativePath}`);
+}
+```
+
+### 9.7 Remove packages/codev/templates/
+
+Delete the duplicate templates directory - skeleton is now the single source of truth.
+
+### 9.8 Update tests
+
+- Test that resolver finds local files first
+- Test that resolver falls back to embedded skeleton
+- Test that eject copies correctly
+- Test that init creates minimal structure
+
+### Exit Criteria (TICK-002)
+
+- [ ] `packages/codev/templates/` removed
+- [ ] `skeleton/` directory created at build time from `codev-skeleton/`
+- [ ] `resolveCodevFile()` utility implemented and tested
+- [ ] `consult` uses resolver for consultant.md
+- [ ] `af` uses resolver for roles and protocols
+- [ ] `codev init` creates minimal structure (specs/, plans/, reviews/ only)
+- [ ] `codev eject` command implemented
+- [ ] Existing projects with full codev/ directory continue to work

@@ -1,12 +1,15 @@
 /**
  * codev init - Create a new codev project
+ *
+ * Creates a minimal codev structure. Framework files (protocols, roles)
+ * are provided by the embedded skeleton at runtime, not copied to the project.
  */
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
 import chalk from 'chalk';
-import { getTemplatesDir, copyTemplateDir, saveHashStore } from '../lib/templates.js';
+import { getTemplatesDir } from '../lib/templates.js';
 
 interface InitOptions {
   yes?: boolean;
@@ -92,41 +95,42 @@ export async function init(projectName?: string, options: InitOptions = {}): Pro
   // Create directory
   fs.mkdirSync(targetDir, { recursive: true });
 
-  // Copy templates
-  const templatesDir = getTemplatesDir();
-  const hashes: Record<string, string> = {};
+  // Create minimal codev structure
+  // Framework files (protocols, roles) are provided by embedded skeleton at runtime
   let fileCount = 0;
 
-  console.log(chalk.dim('Copying codev structure...'));
+  console.log(chalk.dim('Creating minimal codev structure...'));
+  console.log(chalk.dim('(Framework files provided by @cluesmith/codev at runtime)'));
+  console.log('');
 
-  copyTemplateDir(templatesDir, path.join(targetDir, 'codev'), {
-    skipExisting: false,
-    hashes,
-    onFile: (relativePath, action) => {
-      if (action === 'copy') {
-        fileCount++;
-        console.log(chalk.green('  +'), `codev/${relativePath}`);
-      }
-    },
-  });
-
-  // Save hash store for future updates
-  saveHashStore(targetDir, hashes);
-
-  // Create empty directories for user data
-  const userDirs = ['specs', 'plans', 'reviews', 'resources'];
+  // Create user data directories
+  const userDirs = ['specs', 'plans', 'reviews'];
   for (const dir of userDirs) {
     const dirPath = path.join(targetDir, 'codev', dir);
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
-      // Create .gitkeep to preserve empty directory
-      fs.writeFileSync(path.join(dirPath, '.gitkeep'), '');
-    }
+    fs.mkdirSync(dirPath, { recursive: true });
+    // Create .gitkeep to preserve empty directory
+    fs.writeFileSync(path.join(dirPath, '.gitkeep'), '');
+    console.log(chalk.green('  +'), `codev/${dir}/`);
+    fileCount++;
   }
 
-  // Create CLAUDE.md / AGENTS.md at project root
-  const claudeMdSrc = path.join(templatesDir, 'CLAUDE.md');
-  const agentsMdSrc = path.join(templatesDir, 'AGENTS.md');
+  // Create projectlist.md for tracking projects
+  const projectlistPath = path.join(targetDir, 'codev', 'projectlist.md');
+  const projectlistContent = `# Project List
+
+Track all projects here. See codev documentation for status values.
+
+| ID | Name | Status | Priority | Notes |
+|----|------|--------|----------|-------|
+`;
+  fs.writeFileSync(projectlistPath, projectlistContent);
+  console.log(chalk.green('  +'), 'codev/projectlist.md');
+  fileCount++;
+
+  // Create CLAUDE.md / AGENTS.md at project root from skeleton templates
+  const skeletonDir = getTemplatesDir();
+  const claudeMdSrc = path.join(skeletonDir, 'CLAUDE.md.template');
+  const agentsMdSrc = path.join(skeletonDir, 'AGENTS.md.template');
 
   if (fs.existsSync(claudeMdSrc)) {
     const content = fs.readFileSync(claudeMdSrc, 'utf-8')
