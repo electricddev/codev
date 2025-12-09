@@ -813,12 +813,12 @@ Projects that are paused or canceled.
   - id: "0045"
     title: "Project List UI"
     summary: "Visual dashboard tab showing project status across 7 lifecycle stages with welcome onboarding"
-    status: conceived
+    status: planned
     priority: high
     release: null
     files:
       spec: codev/specs/0045-project-list-ui.md
-      plan: null
+      plan: codev/plans/0045-project-list-ui.md
       review: null
     dependencies: ["0007"]
     tags: [ui, dashboard, onboarding]
