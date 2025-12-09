@@ -31,12 +31,12 @@ teardown() {
   run ../node_modules/.bin/codev adopt --yes
   assert_success
 
-  # Verify codev structure added
+  # Verify codev structure added (minimal structure - protocols are embedded in package)
   assert_dir_exists "codev"
   assert_dir_exists "codev/specs"
   assert_dir_exists "codev/plans"
   assert_dir_exists "codev/reviews"
-  assert_dir_exists "codev/protocols"
+  assert_file_exists "codev/projectlist.md"
 }
 
 @test "codev adopt preserves existing README" {
@@ -76,15 +76,18 @@ teardown() {
   assert_file_exists "AGENTS.md"
 }
 
-@test "codev adopt creates SPIDER protocol" {
+@test "codev adopt creates projectlist.md" {
+  # Protocols are embedded in the package, not copied to user projects
+  # Instead we verify projectlist.md is created for project tracking
   mkdir existing-project
   cd existing-project
   git init -q
 
   ../node_modules/.bin/codev adopt --yes
 
-  assert_dir_exists "codev/protocols/spider"
-  assert_file_exists "codev/protocols/spider/protocol.md"
+  assert_file_exists "codev/projectlist.md"
+  run cat codev/projectlist.md
+  assert_output --partial "# Project List"
 }
 
 @test "codev adopt second run fails with update suggestion" {

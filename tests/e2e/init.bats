@@ -29,20 +29,24 @@ teardown() {
 }
 
 @test "codev init creates codev directory structure" {
+  # Minimal structure - protocols/roles/templates are embedded in package
   ./node_modules/.bin/codev init my-project --yes
 
   assert_dir_exists "my-project/codev"
   assert_dir_exists "my-project/codev/specs"
   assert_dir_exists "my-project/codev/plans"
   assert_dir_exists "my-project/codev/reviews"
-  assert_dir_exists "my-project/codev/protocols"
+  assert_file_exists "my-project/codev/projectlist.md"
 }
 
-@test "codev init creates SPIDER protocol" {
+@test "codev init creates projectlist.md" {
+  # SPIDER protocol is embedded in package, not copied
+  # Verify projectlist.md is created with proper content instead
   ./node_modules/.bin/codev init my-project --yes
 
-  assert_dir_exists "my-project/codev/protocols/spider"
-  assert_file_exists "my-project/codev/protocols/spider/protocol.md"
+  assert_file_exists "my-project/codev/projectlist.md"
+  run cat my-project/codev/projectlist.md
+  assert_output --partial "# Project List"
 }
 
 @test "codev init creates CLAUDE.md" {
@@ -78,20 +82,26 @@ teardown() {
   refute_output --partial "{{PROJECT_NAME}}"
 }
 
-@test "codev init creates roles directory" {
-  ./node_modules/.bin/codev init my-project --yes
-
-  assert_dir_exists "my-project/codev/roles"
-  assert_file_exists "my-project/codev/roles/architect.md"
-  assert_file_exists "my-project/codev/roles/builder.md"
+@test "codev init output mentions embedded framework files" {
+  # Roles are embedded in package, not copied to user projects
+  # Verify the output mentions this for user understanding
+  run ./node_modules/.bin/codev init my-project --yes
+  assert_success
+  assert_output --partial "Framework files provided by @cluesmith/codev"
 }
 
-@test "codev init creates protocol templates" {
+@test "codev init creates empty directories ready for use" {
+  # Templates are embedded in package, not copied
+  # Verify the spec/plan/review directories are empty but exist
   ./node_modules/.bin/codev init my-project --yes
 
-  assert_file_exists "my-project/codev/protocols/spider/templates/spec.md"
-  assert_file_exists "my-project/codev/protocols/spider/templates/plan.md"
-  assert_file_exists "my-project/codev/protocols/spider/templates/review.md"
+  assert_dir_exists "my-project/codev/specs"
+  assert_dir_exists "my-project/codev/plans"
+  assert_dir_exists "my-project/codev/reviews"
+
+  # Verify they're ready for user content (can write to them)
+  echo "test" > my-project/codev/specs/test.md
+  assert_file_exists "my-project/codev/specs/test.md"
 }
 
 # === Error Cases ===
