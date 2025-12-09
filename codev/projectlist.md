@@ -126,7 +126,7 @@ Projects currently in development (conceived through committed), sorted by prior
   - id: "0039"
     title: "Codev CLI (First-Class Command)"
     summary: "Unified codev command as primary entry point: init, adopt, doctor, update, tower, consult"
-    status: committed
+    status: integrated
     priority: high
     release: null
     files:
@@ -140,7 +140,7 @@ Projects currently in development (conceived through committed), sorted by prior
   - id: "0040"
     title: "TICK as SPIDER Amendment"
     summary: "Rework TICK to be amendments to existing SPIDER specs/plans rather than a separate protocol"
-    status: implemented
+    status: integrated
     priority: high
     release: null
     files:
@@ -326,7 +326,7 @@ Projects currently in development (conceived through committed), sorted by prior
   - id: "0036"
     title: "Tab Bar Actions & Tooltips"
     summary: "Add open-in-new-tab, reload, hover tooltips; remove unused Refresh/Stop All buttons"
-    status: implemented
+    status: integrated
     priority: low
     release: null
     files:
@@ -772,7 +772,7 @@ Projects that are paused or canceled.
   - id: "0042"
     title: "Namespace Builder Sessions"
     summary: "Add project namespace to tmux sessions and builder IDs to prevent cross-project collisions"
-    status: committed
+    status: integrated
     priority: high
     release: null
     files:
