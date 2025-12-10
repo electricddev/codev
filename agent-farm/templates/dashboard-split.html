@@ -2482,9 +2482,9 @@
         const cellContent = getStageCellContent(project, stage);
         if (cellContent.label && cellContent.link) {
           if (cellContent.external) {
-            content = `<a href="${cellContent.link}" target="_blank" rel="noopener"><span class="checkmark">✓</span> ${cellContent.label}</a>`;
+            content = `<span class="checkmark">✓</span> <a href="${cellContent.link}" target="_blank" rel="noopener">${cellContent.label}</a>`;
           } else {
-            content = `<a href="#" onclick="openProjectFile('${cellContent.link}'); return false;"><span class="checkmark">✓</span> ${cellContent.label}</a>`;
+            content = `<span class="checkmark">✓</span> <a href="#" onclick="openProjectFile('${cellContent.link}'); return false;">${cellContent.label}</a>`;
           }
         } else {
           content = '<span class="checkmark">✓</span>';
@@ -2500,9 +2500,9 @@
           const cellContent = getStageCellContent(project, stage);
           if (cellContent.label && cellContent.link) {
             if (cellContent.external) {
-              content = `<a href="${cellContent.link}" target="_blank" rel="noopener"><span class="current-indicator"></span> ${cellContent.label}</a>`;
+              content = `<span class="current-indicator"></span> <a href="${cellContent.link}" target="_blank" rel="noopener">${cellContent.label}</a>`;
             } else {
-              content = `<a href="#" onclick="openProjectFile('${cellContent.link}'); return false;"><span class="current-indicator"></span> ${cellContent.label}</a>`;
+              content = `<span class="current-indicator"></span> <a href="#" onclick="openProjectFile('${cellContent.link}'); return false;">${cellContent.label}</a>`;
             }
           } else {
             content = '<span class="current-indicator"></span>';
