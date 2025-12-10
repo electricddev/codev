@@ -303,54 +303,56 @@ async function runConsultation(
 }
 
 /**
- * Prepare PR data files for consultation
+ * Fetch PR data and return it inline
  */
-function preparePRData(prNumber: number, projectRoot: string): string {
-  const dataDir = path.join(projectRoot, '.consult', `pr-${String(prNumber).padStart(4, '0')}`);
-
-  // Create data directory
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
+function fetchPRData(prNumber: number): { info: string; diff: string; comments: string } {
+  console.error(`Fetching PR #${prNumber} data...`);
 
   try {
-    // Fetch PR info
-    console.error(`Fetching PR #${prNumber} data...`);
-    const prInfo = execSync(`gh pr view ${prNumber} --json title,body,state,author,baseRefName,headRefName,files,additions,deletions`, { encoding: 'utf-8' });
-    fs.writeFileSync(path.join(dataDir, 'pr-info.json'), prInfo);
+    const info = execSync(`gh pr view ${prNumber} --json title,body,state,author,baseRefName,headRefName,files,additions,deletions`, { encoding: 'utf-8' });
+    const diff = execSync(`gh pr diff ${prNumber}`, { encoding: 'utf-8' });
 
-    // Fetch PR diff
-    const prDiff = execSync(`gh pr diff ${prNumber}`, { encoding: 'utf-8' });
-    fs.writeFileSync(path.join(dataDir, 'pr-diff.patch'), prDiff);
-
-    // Fetch PR comments
+    let comments = '(No comments)';
     try {
-      const prComments = execSync(`gh pr view ${prNumber} --comments`, { encoding: 'utf-8' });
-      fs.writeFileSync(path.join(dataDir, 'pr-comments.txt'), prComments);
+      comments = execSync(`gh pr view ${prNumber} --comments`, { encoding: 'utf-8' });
     } catch {
-      fs.writeFileSync(path.join(dataDir, 'pr-comments.txt'), '(No comments)');
+      // No comments or error fetching
     }
 
-    console.error(`PR data saved to ${dataDir}`);
+    return { info, diff, comments };
   } catch (err) {
     throw new Error(`Failed to fetch PR data: ${err}`);
   }
-
-  return dataDir;
 }
 
 /**
  * Build query for PR review
  */
-function buildPRQuery(prNumber: number, projectRoot: string): string {
-  const dataDir = preparePRData(prNumber, projectRoot);
+function buildPRQuery(prNumber: number, _projectRoot: string): string {
+  const prData = fetchPRData(prNumber);
+
+  // Truncate diff if too large (keep first 50k chars)
+  const maxDiffSize = 50000;
+  const diff = prData.diff.length > maxDiffSize
+    ? prData.diff.substring(0, maxDiffSize) + '\n\n... (diff truncated, ' + prData.diff.length + ' chars total)'
+    : prData.diff;
 
   return `Review Pull Request #${prNumber}
 
-Available data files (read these to understand the PR):
-- PR Info (JSON): ${dataDir}/pr-info.json
-- Diff: ${dataDir}/pr-diff.patch
-- Comments: ${dataDir}/pr-comments.txt
+## PR Info
+\`\`\`json
+${prData.info}
+\`\`\`
+
+## Diff
+\`\`\`diff
+${diff}
+\`\`\`
+
+## Comments
+${prData.comments}
+
+---
 
 Please review:
 1. Code quality and correctness
