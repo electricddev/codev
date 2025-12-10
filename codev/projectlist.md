@@ -743,6 +743,7 @@ Projects that are paused or canceled.
 
 ---
 
+```yaml
   - id: "0038"
     title: "Consult PR Mode"
     summary: "Add pr subcommand to consult tool for optimized PR reviews with pre-fetched data and verdict extraction"
@@ -854,6 +855,7 @@ Projects that are paused or canceled.
     dependencies: []
     tags: [documentation, internals]
     notes: ""
+```
 
 ## Next Available Number
 
