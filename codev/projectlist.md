@@ -151,7 +151,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: []
     tags: [protocols, architecture]
-    notes: "Human approved 2025-12-08. Implemented 2025-12-08. Updated templates (spec.md, plan.md), rewrote TICK protocol, updated CLAUDE.md/AGENTS.md. Tested with TICK 0022-001."
+    notes: "Integrated: 2025-12-08T17:09:10-08:00. Human approved 2025-12-08. Implemented 2025-12-08. Updated templates (spec.md, plan.md), rewrote TICK protocol, updated CLAUDE.md/AGENTS.md. Tested with TICK 0022-001."
 
   - id: "0014"
     title: "Flexible Builder Spawning"
@@ -165,7 +165,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: ["0005"]
     tags: [cli, agents, architecture]
-    notes: "Five modes: spec, task, protocol, shell, worktree. 3-way reviewed, merged PR 35, 37 unit tests added."
+    notes: "Integrated: 2025-12-05T05:23:04-08:00. Five modes: spec, task, protocol, shell, worktree. 3-way reviewed, merged PR 35, 37 unit tests added."
 
   - id: "0020"
     title: "Send Instructions to Builder"
@@ -179,7 +179,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: ["0005"]
     tags: [cli, agents, communication]
-    notes: "Merged PR 31. Uses tmux load-buffer + paste-buffer. Structured message format. Consulted GPT-5 and Gemini Pro."
+    notes: "Integrated: 2025-12-04T12:39:10-08:00. Merged PR 31. Uses tmux load-buffer + paste-buffer. Structured message format. Consulted GPT-5 and Gemini Pro."
 
 
   - id: "0022"
@@ -195,7 +195,7 @@ Projects currently in development (conceived through committed), sorted by prior
     ticks: [001]
     dependencies: []
     tags: [architecture, agents, consultation]
-    notes: "Merged PR 30. Python/Typer CLI at codev/bin/consult. Consultant role as collaborative partner. Consulted GPT-5 and Gemini Pro. TICK-001: Architect-mediated PR reviews (2025-12-08)."
+    notes: "Integrated: 2025-12-04T12:39:10-08:00. Merged PR 30. Python/Typer CLI at codev/bin/consult. Consultant role as collaborative partner. Consulted GPT-5 and Gemini Pro. TICK-001: Architect-mediated PR reviews (2025-12-08)."
 
   - id: "0024"
     title: "Builder Event Notifications"
@@ -224,7 +224,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: ["0007"]
     tags: [ui, dashboard, editing]
-    notes: "TICK protocol. PR 34 merged 2025-12-04. Edit mode with auto-save, Cancel restores disk state. UX polish: contextual subtitles, clearer button labels. Consulted GPT-5 and Gemini Pro."
+    notes: "Integrated: 2025-12-04T17:07:28-08:00. TICK protocol. PR 34 merged 2025-12-04. Edit mode with auto-save, Cancel restores disk state. UX polish: contextual subtitles, clearer button labels. Consulted GPT-5 and Gemini Pro."
 
   - id: "0011"
     title: "Multi-Instance Support"
@@ -238,7 +238,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: ["0007"]
     tags: [ui, dashboard, multi-project]
-    notes: "TICK protocol. PROJECT_NAME placeholder in templates. Meta-dashboard split to 0029."
+    notes: "Integrated: 2025-12-05T06:15:10-08:00. TICK protocol. PROJECT_NAME placeholder in templates. Meta-dashboard split to 0029."
 
   - id: "0013"
     title: "Document OS Dependencies"
@@ -252,7 +252,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: []
     tags: [documentation, installation]
-    notes: "TICK protocol. codev-doctor (bash) + deps.ts (TypeScript). PR 32 merged 2025-12-04. Consulted GPT-5 and Gemini Pro."
+    notes: "Integrated: 2025-12-04T15:23:49-08:00. TICK protocol. codev-doctor (bash) + deps.ts (TypeScript). PR 32 merged 2025-12-04. Consulted GPT-5 and Gemini Pro."
 
   - id: "0015"
     title: "Cleanup Protocol"
@@ -266,7 +266,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: []
     tags: [protocols, maintenance]
-    notes: "TICK protocol. Four phases: AUDIT→PRUNE→VALIDATE→SYNC. PR 33 merged 2025-12-04. **Will be renamed to MAINTAIN and expanded per spec 0035.**"
+    notes: "Integrated: 2025-12-04T16:54:48-08:00. TICK protocol. Four phases: AUDIT→PRUNE→VALIDATE→SYNC. PR 33 merged 2025-12-04. **Will be renamed to MAINTAIN and expanded per spec 0035.**"
 
   - id: "0019"
     title: "Tab Bar Status Indicators"
@@ -280,7 +280,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: ["0007"]
     tags: [ui, dashboard]
-    notes: "TICK protocol. Color dots with accessibility (shapes/tooltips for colorblind). Consulted GPT-5 and Gemini Pro."
+    notes: "Integrated: 2025-12-05T13:58:34-08:00. TICK protocol. Color dots with accessibility (shapes/tooltips for colorblind). Consulted GPT-5 and Gemini Pro."
 
   - id: "0023"
     title: "Consult Tool (Stateful)"
@@ -322,7 +322,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: codev/reviews/0037-tab-bar-ux.md
     dependencies: ["0007"]
     tags: [ui, dashboard, ux]
-    notes: "TICK protocol. PR 58 merged 2025-12-07. Close button improved 2025-12-07."
+    notes: "Integrated: 2025-12-07T20:40:59-08:00. TICK protocol. PR 58 merged 2025-12-07. Close button improved 2025-12-07."
 
 # Low Priority
   - id: "0036"
@@ -337,7 +337,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: ["0007", "0037"]
     tags: [ui, dashboard, cleanup]
-    notes: "TICK protocol. Addressed 3-way review feedback: use tab.port, implemented /file endpoint for reload, added keyboard a11y."
+    notes: "Integrated: 2025-12-08T17:09:10-08:00. TICK protocol. Addressed 3-way review feedback: use tab.port, implemented /file endpoint for reload, added keyboard a11y."
 
   - id: "0006"
     title: "Tutorial Mode"
@@ -351,7 +351,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: codev/reviews/0006-tutorial-mode.md
     dependencies: []
     tags: [documentation, onboarding]
-    notes: "PR #36 merged 2025-12-05"
+    notes: "Integrated: 2025-12-05T13:58:34-08:00. PR #36 merged 2025-12-05"
 
   - id: "0012"
     title: "Hide tmux Status Bar"
@@ -393,7 +393,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: ["0008", "0011"]
     tags: [ui, dashboard, multi-project]
-    notes: "TICK protocol. af tower command. PR 41 merged 2025-12-05."
+    notes: "Integrated: 2025-12-06T06:57:59-08:00. TICK protocol. af tower command. PR 41 merged 2025-12-05."
 
   - id: "0030"
     title: "Markdown Syntax Highlighting in Annotator"
@@ -407,7 +407,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: ["0010"]
     tags: [ui, annotation, markdown]
-    notes: "Hybrid approach: syntax visible but muted, content styled. Prism broke lines; custom renderer works. PR 49 merged 2025-12-06."
+    notes: "Integrated: 2025-12-06T07:21:53-08:00. Hybrid approach: syntax visible but muted, content styled. Prism broke lines; custom renderer works. PR 49 merged 2025-12-06."
 
   - id: "0031"
     title: "SQLite for Runtime State"
@@ -421,7 +421,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: []
     tags: [infrastructure, database, concurrency]
-    notes: "SPIDER protocol. Fixes race conditions in state.json and ports.json. Uses better-sqlite3 with WAL mode. 3-way reviewed. Merged 2025-12-05."
+    notes: "Integrated: 2025-12-05T15:32:52-08:00. SPIDER protocol. Fixes race conditions in state.json and ports.json. Uses better-sqlite3 with WAL mode. 3-way reviewed. Merged 2025-12-05."
 
   - id: "0032"
     title: "Consolidate Templates"
@@ -435,7 +435,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: []
     tags: [infrastructure, cleanup, agent-farm]
-    notes: "TICK protocol. PR 46 merged 2025-12-06."
+    notes: "Integrated: 2025-12-06T06:57:59-08:00. TICK protocol. PR 46 merged 2025-12-06."
 
   - id: "0033"
     title: "Rename Command"
@@ -449,7 +449,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: ["0031"]
     tags: [cli, agent-farm]
-    notes: "Simple feature. Uses SQLite atomic UPDATE. Added getUtil(), renameBuilder(), renameUtil() to state.ts."
+    notes: "Integrated: 2025-12-05T15:37:11-08:00. Simple feature. Uses SQLite atomic UPDATE. Added getUtil(), renameBuilder(), renameUtil() to state.ts."
 
   - id: "0034"
     title: "Table Alignment in Markdown Annotator"
@@ -463,7 +463,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: codev/reviews/0034-table-alignment.md
     dependencies: ["0030"]
     tags: [ui, annotation, markdown]
-    notes: "Two-pass rendering with code block awareness. Preserves alignment markers (:---:). Consulted Gemini/Codex. PR 51 merged 2025-12-06."
+    notes: "Integrated: 2025-12-06T07:21:53-08:00. Two-pass rendering with code block awareness. Preserves alignment markers (:---:). Consulted Gemini/Codex. PR 51 merged 2025-12-06."
 ```
 
 ---
@@ -524,7 +524,7 @@ See Active Projects section above for full details and current status.
       review: codev/reviews/0001-test-infrastructure.md
     dependencies: []
     tags: [testing, infrastructure]
-    notes: "64 tests passing, pre-commit hook installed"
+    notes: "Integrated: 2025-12-03T03:46:44-08:00. 64 tests passing, pre-commit hook installed"
 
   - id: "0002"
     title: "Architect-Builder Pattern"
@@ -538,7 +538,7 @@ See Active Projects section above for full details and current status.
       review: null
     dependencies: []
     tags: [architecture, agents]
-    notes: "Bash CLI implemented, superseded by 0005 TypeScript CLI"
+    notes: "Integrated: 2025-12-03T03:46:44-08:00. Bash CLI implemented, superseded by 0005 TypeScript CLI"
 
   - id: "0004"
     title: "Dashboard Nav UI"
@@ -552,7 +552,7 @@ See Active Projects section above for full details and current status.
       review: null
     dependencies: ["0005"]
     tags: [ui, dashboard]
-    notes: "Integrated with TypeScript CLI"
+    notes: "Integrated: 2025-12-03T03:46:44-08:00. Integrated with TypeScript CLI"
 
   - id: "0005"
     title: "TypeScript CLI"
@@ -566,7 +566,7 @@ See Active Projects section above for full details and current status.
       review: codev/reviews/0005-typescript-cli.md
     dependencies: ["0002"]
     tags: [cli, typescript, npm]
-    notes: "Published as agent-farm@0.1.0 to npm"
+    notes: "Integrated: 2025-12-03T03:46:44-08:00. Published as agent-farm@0.1.0 to npm"
 
   - id: "0007"
     title: "Split-Pane Dashboard"
@@ -580,7 +580,7 @@ See Active Projects section above for full details and current status.
       review: null
     dependencies: ["0005"]
     tags: [ui, dashboard]
-    notes: "Supersedes 0004 left-nav approach"
+    notes: "Integrated: 2025-12-03T03:46:44-08:00. Supersedes 0004 left-nav approach"
 
   - id: "0008"
     title: "Architecture Consolidation"
@@ -594,7 +594,7 @@ See Active Projects section above for full details and current status.
       review: codev/reviews/0008-architecture-consolidation.md
     dependencies: ["0005"]
     tags: [architecture, cli, refactoring]
-    notes: "Completed 2025-12-03. Single TypeScript CLI, config.json, global port registry with file locking"
+    notes: "Integrated: 2025-12-03T03:46:44-08:00. Completed 2025-12-03. Single TypeScript CLI, config.json, global port registry with file locking"
 
   - id: "0009"
     title: "Terminal File Click to Annotate"
@@ -608,7 +608,7 @@ See Active Projects section above for full details and current status.
       review: codev/reviews/0009-terminal-file-click.md
     dependencies: ["0007"]
     tags: [ui, dashboard, dx]
-    notes: "Uses ttyd's native http link handling. Fixed annotation server startup wait. Deleted broken custom xterm.js templates."
+    notes: "Integrated: 2025-12-03T11:43:50-08:00. Uses ttyd's native http link handling. Fixed annotation server startup wait. Deleted broken custom xterm.js templates."
 
   - id: "0016"
     title: "Clarify Builder Role Definition"
@@ -622,7 +622,7 @@ See Active Projects section above for full details and current status.
       review: null
     dependencies: []
     tags: [documentation, naming]
-    notes: "Decided to keep 'Builder' after consulting Pro and Codex. Updated codev/resources/conceptual-model.md with expanded definition. 'Building' = build, remodel, repair, extend, validate, document, maintain."
+    notes: "Integrated: 2025-12-03T03:58:51-08:00. Decided to keep 'Builder' after consulting Pro and Codex. Updated codev/resources/conceptual-model.md with expanded definition. 'Building' = build, remodel, repair, extend, validate, document, maintain."
 
   - id: "0018"
     title: "Annotation Server Reliability"
@@ -636,7 +636,7 @@ See Active Projects section above for full details and current status.
       review: null
     dependencies: ["0008"]
     tags: [bugfix, dashboard]
-    notes: "Fixed: (1) Template path now looks in codev/templates/ instead of deleted agent-farm/templates/, (2) Dashboard API now verifies annotation processes are alive before returning 'existing' entries, cleans up stale state automatically."
+    notes: "Integrated: 2025-12-03T05:15:28-08:00. Fixed: (1) Template path now looks in codev/templates/ instead of deleted agent-farm/templates/, (2) Dashboard API now verifies annotation processes are alive before returning 'existing' entries, cleans up stale state automatically."
 ```
 
 ---
@@ -756,7 +756,7 @@ Projects that are paused or canceled.
       review: null
     dependencies: ["0022"]
     tags: [cli, consultation, performance]
-    notes: "TICK protocol. Implemented as part of consult tool evolution. Pre-fetch PR diff/comments/specs, extract verdict from output."
+    notes: "Integrated: 2025-12-08T15:51:10-08:00. TICK protocol. Implemented as part of consult tool evolution. Pre-fetch PR diff/comments/specs, extract verdict from output."
 
   - id: "0041"
     title: "E2E Test Suite"
@@ -770,7 +770,7 @@ Projects that are paused or canceled.
       review: codev/reviews/0041-e2e-test-suite.md
     dependencies: ["0039"]
     tags: [testing, npm, ci]
-    notes: "SPIDER protocol. PR #78 merged 2025-12-08. BATS-based tests with XDG sandboxing, CI for macOS+Linux."
+    notes: "Integrated: 2025-12-08T15:51:10-08:00. SPIDER protocol. PR #78 merged 2025-12-08. BATS-based tests with XDG sandboxing, CI for macOS+Linux."
 
   - id: "0042"
     title: "Namespace Builder Sessions"
@@ -784,7 +784,7 @@ Projects that are paused or canceled.
       review: null
     dependencies: []
     tags: [agent-farm, multi-project, bug-fix]
-    notes: "TICK protocol (hotfix). Changed session naming from 'builder-{spec_id}' to 'builder-{project}-{spec_id}'. PR #75."
+    notes: "Integrated: 2025-12-08T17:09:10-08:00. TICK protocol (hotfix). Changed session naming from 'builder-{spec_id}' to 'builder-{project}-{spec_id}'. PR #75."
 
   - id: "0043"
     title: "Codex Reliability for Codev"
@@ -798,7 +798,7 @@ Projects that are paused or canceled.
       review: codev/reviews/0043-codex-reliability.md
     dependencies: ["0022"]
     tags: [cli, consultation, codex]
-    notes: "Merged PR #83. Replaced undocumented CODEX_SYSTEM_MESSAGE with experimental_instructions_file, added model_reasoning_effort=low."
+    notes: "Integrated: 2025-12-09T03:46:18-08:00. Merged PR #83. Replaced undocumented CODEX_SYSTEM_MESSAGE with experimental_instructions_file, added model_reasoning_effort=low."
 
   - id: "0044"
     title: "Architect-Builder Workflow Clarity"
