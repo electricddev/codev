@@ -872,10 +872,6 @@
 
     .stage-cell a {
       color: var(--text-primary);
-      text-decoration: none;
-    }
-
-    .stage-cell a:hover {
       text-decoration: underline;
     }
 
@@ -2453,7 +2449,7 @@
           return { label: '', link: null };
         case 'implemented':
           if (project.files && project.files.review) {
-            return { label: 'Review', link: project.files.review };
+            return { label: 'Revw', link: project.files.review };
           }
           return { label: '', link: null };
         case 'committed':
