@@ -129,7 +129,12 @@ Scan the actual codebase and update `codev/resources/arch.md`:
 6. Document new integration points or APIs
 7. Capture architectural decisions from new specs/plans
 
-**What to include**:
+**Primary sources** (specs/plans):
+- Architectural decisions from specs
+- Component relationships from plans
+- Design rationale and tradeoffs
+
+**Secondary sources** (code):
 - File locations and their purpose
 - Key functions/classes and what they do
 - Data flow and dependencies
@@ -145,6 +150,11 @@ Scan the actual codebase and update `codev/resources/arch.md`:
 
 Extract actionable wisdom from review documents into `codev/resources/lessons-learned.md`:
 
+**Discovery phase**:
+1. Find new/modified reviews: `git diff <base-commit>..HEAD --name-only -- codev/reviews/`
+2. Read each new/modified review file
+
+**Extract from reviews**:
 1. Read all files in `codev/reviews/`
 2. Extract lessons that are:
    - Actionable (not just "we learned X")
