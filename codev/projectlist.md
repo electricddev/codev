@@ -425,13 +425,13 @@ Projects currently in development (conceived through committed), sorted by prior
   - id: "0051"
     title: "Codev Cheatsheet"
     summary: "Comprehensive cheatsheet with philosophies, concepts (protocols, roles, hierarchy), and tools reference"
-    status: implementing
+    status: committed
     priority: high
     release: null
     files:
       spec: codev/specs/0051-codev-cheatsheet.md
       plan: codev/plans/0051-codev-cheatsheet.md
-      review: null
+      review: codev/reviews/0051-codev-cheatsheet.md
     dependencies: []
     tags: [documentation, onboarding]
     timestamps:
@@ -439,10 +439,10 @@ Projects currently in development (conceived through committed), sorted by prior
       specified_at: "2025-12-11T10:50:00-08:00"
       planned_at: "2025-12-11T10:50:00-08:00"
       implementing_at: "2025-12-11T10:50:00-08:00"
-      implemented_at: null
-      committed_at: null
+      implemented_at: "2025-12-11T11:30:00-08:00"
+      committed_at: "2025-12-11T11:45:00-08:00"
       integrated_at: null
-    notes: ""
+    notes: "PR #98 merged 2025-12-11"
 
   - id: "0050"
     title: "Dashboard Polish"
