@@ -26,6 +26,7 @@ git log --oneline <last-maint-commit>..HEAD
 - [ ] arch.md sync
 - [ ] lessons-learned.md generation
 - [ ] CLAUDE.md / AGENTS.md sync
+- [ ] Documentation pruning (obsolete content, size limits)
 
 ### Framework
 - [ ] codev update

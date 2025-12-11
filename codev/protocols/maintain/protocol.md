@@ -89,6 +89,7 @@ ruff check --select F401   # Find unused imports
 | Update arch.md | Yes | No | Sync architecture doc with actual codebase |
 | Generate lessons-learned.md | Yes | Yes | Extract wisdom from review documents |
 | Sync CLAUDE.md ↔ AGENTS.md | Yes | No | Ensure both files match |
+| Prune documentation | Yes | Yes | Remove obsolete info, keep CLAUDE.md/README.md under 400 lines |
 | Check spec/plan/review consistency | Yes | Yes | Find specs without reviews, plans that don't match code |
 | Remove stale doc references | Yes | No | Delete references to deleted code/files |
 
@@ -188,6 +189,34 @@ Ensure both instruction files contain the same content:
 2. Identify divergence
 3. Update the stale one to match
 4. Both should be identical (per AGENTS.md standard)
+
+### Prune Documentation
+
+Review documentation for obsolete content and size management:
+
+**Files to review**:
+- `codev/resources/arch.md` - remove references to deleted code/modules
+- `codev/resources/lessons-learned.md` - remove outdated lessons (tech changed, patterns superseded)
+- `CLAUDE.md` / `AGENTS.md` - keep under ~400 lines
+- `README.md` - keep under ~400 lines
+
+**Size management for CLAUDE.md/README.md**:
+1. Check line count: `wc -l CLAUDE.md README.md`
+2. If over 400 lines, identify content to extract
+3. Move detailed content to `codev/resources/` or `codev/docs/`
+4. Replace with summary + link to full doc
+
+**What to extract**:
+- Detailed command references → `codev/docs/commands/`
+- Protocol details → `codev/protocols/*/protocol.md`
+- Tool configuration → `codev/resources/`
+- Historical context → `codev/resources/`
+
+**What to keep in CLAUDE.md**:
+- Quick start essentials
+- Critical rules and constraints
+- Links to detailed docs
+- Project-specific context
 
 ### Remove Dead Code
 
