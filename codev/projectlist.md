@@ -425,7 +425,7 @@ Projects currently in development (conceived through committed), sorted by prior
   - id: "0051"
     title: "Codev Cheatsheet"
     summary: "Comprehensive cheatsheet with philosophies, concepts (protocols, roles, hierarchy), and tools reference"
-    status: committed
+    status: integrated
     priority: high
     release: null
     files:
@@ -441,7 +441,7 @@ Projects currently in development (conceived through committed), sorted by prior
       implementing_at: "2025-12-11T10:50:00-08:00"
       implemented_at: "2025-12-11T11:30:00-08:00"
       committed_at: "2025-12-11T11:45:00-08:00"
-      integrated_at: null
+      integrated_at: "2025-12-11T12:00:00-08:00"
     notes: "PR #98 merged 2025-12-11"
 
   - id: "0050"
