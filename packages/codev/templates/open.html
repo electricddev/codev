@@ -430,14 +430,12 @@
         previewContainer.style.display = 'block';
         toggleIcon.textContent = '📝';
         toggleText.textContent = 'Annotate';
-        editBtn.disabled = true;  // Can't enter edit mode while previewing
       } else {
         // Switch back to annotated view
         viewMode.style.display = 'grid';
         previewContainer.style.display = 'none';
         toggleIcon.textContent = '👁';
         toggleText.textContent = 'Preview';
-        editBtn.disabled = false;
       }
 
       // Restore approximate scroll position after content is rendered
@@ -922,8 +920,14 @@
       const editBtn = document.getElementById('editBtn');
       const saveBtn = document.getElementById('saveBtn');
       const cancelBtn = document.getElementById('cancelBtn');
+      const previewContainer = document.getElementById('preview-container');
 
       const subtitle = document.querySelector('.subtitle');
+
+      // If in preview mode, exit preview first
+      if (isPreviewMode) {
+        togglePreviewMode();
+      }
 
       if (!editMode) {
         // Enter edit mode
