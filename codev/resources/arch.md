@@ -1395,7 +1395,7 @@ Agent Farm orchestrates multiple AI agents working in parallel on a codebase. Th
 ```
 
 **Key Components**:
-1. **Dashboard Server**: Express HTTP server serving the web UI and REST API
+1. **Dashboard Server**: Native Node.js HTTP server (not Express) serving the web UI and REST API
 2. **ttyd**: Web-based terminal emulator exposing tmux sessions via HTTP
 3. **tmux**: Terminal multiplexer providing session persistence
 4. **Git Worktrees**: Isolated working directories for each builder
@@ -1422,16 +1422,17 @@ Each project receives a dedicated 100-port block:
 
 #### Port Layout Within a Block
 
-Given a base port (e.g., 4200):
+Given a base port (e.g., 4200), ports are allocated from starting offsets:
 
 | Port Offset | Port (example) | Purpose |
 |-------------|----------------|---------|
 | +0 | 4200 | Dashboard HTTP server |
 | +1 | 4201 | Architect terminal (ttyd) |
-| +10 to +29 | 4210-4229 | Builder terminals (20 slots) |
-| +30 to +49 | 4230-4249 | Utility terminals (20 slots) |
-| +50 to +69 | 4250-4269 | Annotation viewers (20 slots) |
-| +70 to +99 | 4270-4299 | Reserved for future use |
+| +10+ | 4210+ | Builder terminals (start offset) |
+| +30+ | 4230+ | Utility terminals (start offset) |
+| +50+ | 4250+ | Annotation viewers (start offset) |
+
+**Note**: Port ranges are starting points, not hard limits. When spawning terminals, the system starts at the range offset and scans upward for an available port. With many concurrent terminals, ports may extend beyond their nominal ranges within the 100-port block.
 
 #### Global Registry (`~/.agent-farm/global.db`)
 
@@ -1505,10 +1506,13 @@ ttyd exposes tmux sessions over HTTP:
 ttyd --port {port} --writable tmux attach -t {sessionName}
 ```
 
-**Custom Index Page** (`ttyd-index.html`):
-- Provides file path click detection using xterm.js link provider
+**Custom Index Page** (`ttyd-index.html` - optional):
+If a `ttyd-index.html` template exists, ttyd uses it to provide enhanced features:
+- File path click detection using xterm.js link provider
 - Supports relative paths (`./foo.ts`), src-relative (`src/bar.js:42`), and absolute paths
 - Opens clicked files in the annotation viewer via `/open-file` route
+
+If the template is not present, ttyd falls back to its default UI and file click handling works via the `/open-file` HTTP endpoint with BroadcastChannel messaging to the dashboard.
 
 ### State Management
 
@@ -1991,7 +1995,7 @@ const CONFIG = {
 | `templates/dashboard-split.html` | Main dashboard UI |
 | `templates/dashboard.html` | Legacy dashboard (fallback) |
 | `templates/annotate.html` | File annotation viewer |
-| `templates/ttyd-index.html` | Custom terminal with file clicks |
+| `templates/ttyd-index.html` | Custom terminal with file clicks (optional) |
 
 ---
 
