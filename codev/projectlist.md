@@ -403,7 +403,7 @@ Projects currently in development (conceived through committed), sorted by prior
   - id: "0052"
     title: "Agent Farm Internals Documentation"
     summary: "Comprehensive arch.md section on af internals: ports, tmux, state, worktrees, dashboard"
-    status: committed
+    status: integrated
     priority: high
     release: null
     files:
@@ -419,7 +419,7 @@ Projects currently in development (conceived through committed), sorted by prior
       implementing_at: "2025-12-11T11:15:00-08:00"
       implemented_at: "2025-12-11T12:30:00-08:00"
       committed_at: "2025-12-11T12:45:00-08:00"
-      integrated_at: null
+      integrated_at: "2025-12-11T13:00:00-08:00"
     notes: "PR #99 merged 2025-12-11"
 
   - id: "0051"
