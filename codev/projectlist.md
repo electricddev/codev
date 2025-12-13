@@ -1381,7 +1381,7 @@ Projects that are paused or canceled.
   - id: "0054"
     title: "Generate Image Tool"
     summary: "CLI tool for AI image generation using Gemini/Imagen models with reference image support"
-    status: conceived
+    status: implementing
     priority: medium
     release: null
     files:
@@ -1392,13 +1392,13 @@ Projects that are paused or canceled.
     tags: [cli, tools, ai, images]
     timestamps:
       conceived_at: "2025-12-13T12:35:00-08:00"
-      specified_at: null
-      planned_at: null
-      implementing_at: null
+      specified_at: "2025-12-13T12:35:00-08:00"
+      planned_at: "2025-12-13T12:35:00-08:00"
+      implementing_at: "2025-12-13T12:40:00-08:00"
       implemented_at: null
       committed_at: null
       integrated_at: null
-    notes: "Import from ../../writing/tools/generate_image.py"
+    notes: "Import from ../../writing/tools/generate_image.py. Builder spawned."
 ```
 
 ## Next Available Number
