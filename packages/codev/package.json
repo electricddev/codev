@@ -1,6 +1,6 @@
 {
   "name": "@cluesmith/codev",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Codev CLI - AI-assisted software development framework",
   "type": "module",
   "bin": {
@@ -11,7 +11,8 @@
   "files": [
     "dist",
     "bin",
-    "skeleton"
+    "skeleton",
+    "templates"
   ],
   "scripts": {
     "build": "tsc && npm run copy-skeleton",

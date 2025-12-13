@@ -400,6 +400,28 @@ Projects currently in development (conceived through committed), sorted by prior
       integrated_at: null
     notes: "Phase 2: Stateful. Keep CLI running via stdio. Maintain session until closed. Depends on 0022."
 
+  - id: "0053"
+    title: "af open Image Support"
+    summary: "Extend af open to display images (PNG, JPG, GIF, WebP, SVG) with zoom controls"
+    status: planned
+    priority: medium
+    release: null
+    files:
+      spec: codev/specs/0053-af-open-image-support.md
+      plan: codev/plans/0053-af-open-image-support.md
+      review: null
+    dependencies: []
+    tags: [agent-farm, dashboard, ui]
+    timestamps:
+      conceived_at: "2025-12-11T15:00:00-08:00"
+      specified_at: "2025-12-11T15:00:00-08:00"
+      planned_at: "2025-12-11T15:00:00-08:00"
+      implementing_at: null
+      implemented_at: null
+      committed_at: null
+      integrated_at: null
+    notes: ""
+
   - id: "0052"
     title: "Agent Farm Internals Documentation"
     summary: "Comprehensive arch.md section on af internals: ports, tmux, state, worktrees, dashboard"
@@ -469,7 +491,7 @@ Projects currently in development (conceived through committed), sorted by prior
   - id: "0035"
     title: "MAINTAIN Protocol"
     summary: "Rename CLEANUP to MAINTAIN, expand scope to include documentation maintenance (arch.md, lessons-learned.md, CLAUDE.md/AGENTS.md sync)"
-    status: committed
+    status: integrated
     priority: medium
     release: null
     files:
@@ -485,8 +507,8 @@ Projects currently in development (conceived through committed), sorted by prior
       implementing_at: null
       implemented_at: null
       committed_at: "2025-12-06T15:40:02-08:00"
-      integrated_at: null
-    notes: "PR #56 merged 2025-12-06. Supersedes CLEANUP (0015). Adds doc maintenance to code hygiene. Consulted Gemini/Codex. No new roles - MAINTAIN executed by Builder like any protocol."
+      integrated_at: "2025-12-11T15:30:00-08:00"
+    notes: "PR #56 merged 2025-12-06. Integrated 2025-12-11. Supersedes CLEANUP (0015). Adds doc maintenance to code hygiene. Consulted Gemini/Codex. No new roles - MAINTAIN executed by Builder like any protocol."
 
   - id: "0037"
     title: "Tab Bar UX Improvements"
