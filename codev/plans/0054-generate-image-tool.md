@@ -2,20 +2,20 @@
 
 ## Implementation Steps
 
-### Phase 1: Create Python Tool
+### Phase 1: Create TypeScript Tool
 
-1. **Copy source file**
-   - Copy `../../writing/tools/generate_image.py` to `packages/codev/src/tools/generate_image.py`
-   - Adjust imports if needed
+1. **Create source file**
+   - Create `packages/codev/src/commands/generate-image/index.ts`
+   - Port logic from `../../writing/tools/generate_image.py` to TypeScript
+   - Use Commander.js for CLI
 
-2. **Update pyproject.toml**
-   - Add dependencies: `google-genai`, `pillow`, `python-dotenv`
-   - Add script entry point: `generate-image = "tools.generate_image:app"`
+2. **Add dependencies**
+   - Add `@google/genai` to package.json
 
 ### Phase 2: Integration
 
 3. **Wire up the command**
-   - Ensure the tool is accessible via `codev generate-image` or standalone `generate-image`
+   - Add bin entry in package.json: `"generate-image": "./dist/commands/generate-image/index.js"`
    - Test with actual API key
 
 4. **Documentation**
@@ -23,8 +23,8 @@
 
 ## Files to Modify
 
-- `packages/codev/src/tools/generate_image.py` (NEW - copy from source)
-- `packages/codev/pyproject.toml` (add deps and entry point)
+- `packages/codev/src/commands/generate-image/index.ts` (NEW)
+- `packages/codev/package.json` (add dep and bin entry)
 - `codev/docs/commands/overview.md` (add to tool list)
 
 ## Testing
