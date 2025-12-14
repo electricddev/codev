@@ -9,7 +9,7 @@
  */
 
 import { resolve, basename } from 'node:path';
-import { existsSync, readFileSync, writeFileSync, chmodSync, readdirSync, type Dirent } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, chmodSync, readdirSync, symlinkSync, type Dirent } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import type { SpawnOptions, Builder, Config, BuilderType } from '../types.js';
 import { getConfig, ensureDirectories, getResolvedCommands } from '../utils/index.js';
@@ -217,6 +217,18 @@ async function createWorktree(config: Config, branchName: string, worktreePath: 
     await run(`git worktree add "${worktreePath}" ${branchName}`, { cwd: config.projectRoot });
   } catch (error) {
     fatal(`Failed to create worktree: ${error}`);
+  }
+
+  // Symlink .env from project root into worktree (if it exists)
+  const rootEnvPath = resolve(config.projectRoot, '.env');
+  const worktreeEnvPath = resolve(worktreePath, '.env');
+  if (existsSync(rootEnvPath) && !existsSync(worktreeEnvPath)) {
+    try {
+      symlinkSync(rootEnvPath, worktreeEnvPath);
+      logger.info('Linked .env from project root');
+    } catch (error) {
+      logger.debug(`Failed to symlink .env: ${error}`);
+    }
   }
 }
 
