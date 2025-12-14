@@ -1,8 +1,8 @@
 # RELEASE Protocol
 
-The RELEASE protocol is used when preparing a new version of Codev for publication.
+> **Important**: This protocol is **specific to the Codev project itself**. It lives only in `codev/protocols/` and is intentionally NOT included in `codev-skeleton/`. It serves as an example of how projects can create custom protocols tailored to their specific needs.
 
-> **Note**: This protocol is specific to the Codev project itself and is not included in codev-skeleton.
+The RELEASE protocol is used when preparing a new version of Codev for publication to npm.
 
 ## When to Use
 
