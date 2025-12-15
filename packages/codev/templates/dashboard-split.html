@@ -3793,8 +3793,14 @@
       }
     }
 
-    // Global keyboard handler for Cmd+P / Ctrl+P
+    // Global keyboard handler for Cmd+P / Ctrl+P and Escape
     document.addEventListener('keydown', (e) => {
+      // Global Escape handler for palette (works even if input loses focus)
+      if (e.key === 'Escape' && paletteOpen) {
+        closePalette();
+        return;
+      }
+
       // Cmd+P (macOS) or Ctrl+P (Windows/Linux)
       if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
         // Skip if user is typing in an input/textarea (except our search inputs)
