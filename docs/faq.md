@@ -1,0 +1,75 @@
+# Frequently Asked Questions
+
+## How do Codev Protocols and Roles compare to Claude Code subagents and skills?
+
+These are **fundamentally different concepts** that operate at different layers. Here's an accurate comparison:
+
+### Builders vs Subagents
+
+**They are not the same thing.**
+
+| Aspect | Claude Code Subagent | Codev Builder |
+|--------|---------------------|---------------|
+| **What it is** | A spawned task within the same Claude session | A **full Claude Code instance** in its own terminal |
+| **Isolation** | Shares context with parent | **Isolated git worktree** with its own branch |
+| **Lifetime** | Returns result and terminates | Runs until PR is merged |
+| **Parallelism** | Limited by token context | True parallelism - multiple terminals |
+| **Git access** | Same working directory | Own branch, can commit freely |
+| **Human interaction** | None (autonomous task) | Can ask questions, report blocked status |
+
+A Builder is essentially **another human-equivalent developer** working in parallel, not a helper task.
+
+### Roles vs Subagents
+
+**Also not the same thing.**
+
+| Aspect | Claude Code Subagent | Codev Role |
+|--------|---------------------|------------|
+| **Scope** | Single task | Entire session |
+| **How applied** | Task tool spawns it | System prompt loaded at startup |
+| **Persistence** | Ephemeral | Persistent throughout session |
+| **Purpose** | Parallelize specific work | Define persona, responsibilities, constraints |
+
+A Role (Architect, Builder, Consultant) shapes **how the agent thinks and operates** for an entire session. It's not spawned for a task - it's who the agent *is*.
+
+### Protocols vs Skills
+
+**Different purposes entirely.**
+
+| Aspect | Claude Code Skill | Codev Protocol |
+|--------|------------------|----------------|
+| **What it is** | Slash command that injects context | Multi-phase development methodology |
+| **Phases** | Single action | Multiple stages with defined transitions |
+| **Human gates** | None | Required approvals between phases |
+| **Artifacts** | May produce output | Produces specs, plans, reviews |
+| **External review** | No | Multi-model consultation built in |
+
+A Protocol like SPIDER defines a complete development lifecycle:
+```
+Specify (human approval) → Plan (human approval) → Implement → Defend → Evaluate → Review
+```
+
+Skills are more like shortcuts or macros. Protocols are methodologies.
+
+### Summary
+
+| Codev Concept | What it actually is | NOT equivalent to |
+|---------------|--------------------|--------------------|
+| **Builder** | Full Claude instance in isolated worktree | Subagent |
+| **Role** | Session-wide persona via system prompt | Subagent |
+| **Protocol** | Multi-phase methodology with human gates | Skill |
+
+### How they work together
+
+Codev runs *on top of* Claude Code. The Architect and Builder roles use Claude Code's tools (Bash, Read, Write, Task, etc.) but add:
+
+- **Isolated parallel execution** via git worktrees
+- **Structured workflows** with human approval gates
+- **External consultation** with other AI models
+- **Persistent project tracking** across sessions
+
+Think of Claude Code as the engine. Codev is the operating system that orchestrates it for larger software projects.
+
+## More questions?
+
+Join the conversation in [GitHub Discussions](https://github.com/ansari-project/codev/discussions).

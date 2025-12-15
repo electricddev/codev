@@ -1321,7 +1321,7 @@ Projects that are paused or canceled.
   - id: "0047"
     title: "Tips & Tricks Page"
     summary: "Practical tips page for getting the most out of Codev and Agent Farm"
-    status: implemented
+    status: integrated
     priority: medium
     release: null
     files:
@@ -1336,9 +1336,9 @@ Projects that are paused or canceled.
       planned_at: "2025-12-13T21:00:00-08:00"
       implementing_at: "2025-12-13T21:00:00-08:00"
       implemented_at: "2025-12-13T21:05:00-08:00"
-      committed_at: null
-      integrated_at: null
-    notes: "Tips page at docs/tips.md, linked from README"
+      committed_at: "2025-12-15T14:45:00-08:00"
+      integrated_at: "2025-12-15T14:45:00-08:00"
+    notes: "Tips page at docs/tips.md, FAQ at docs/faq.md"
 
   - id: "0048"
     title: "Markdown Preview for af open"
