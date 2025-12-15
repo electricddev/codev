@@ -170,6 +170,8 @@ Use `--type` to load stage-specific review prompts:
 | `pr-ready` | implemented | Final check before PR |
 | `integration-review` | committed | Architect's integration review |
 
+**Location:** Review type prompts are stored in `codev/consult-types/`. You can customize existing prompts or add your own by creating new `.md` files in this directory.
+
 **Example:**
 
 ```bash

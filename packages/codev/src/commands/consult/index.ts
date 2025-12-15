@@ -9,7 +9,7 @@ import * as path from 'node:path';
 import { spawn, execSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import chalk from 'chalk';
-import { resolveCodevFile, readCodevFile, findProjectRoot } from '../../lib/skeleton.js';
+import { resolveCodevFile, readCodevFile, findProjectRoot, hasLocalOverride } from '../../lib/skeleton.js';
 
 // Model configuration
 interface ModelConfig {
@@ -72,20 +72,25 @@ function loadRole(projectRoot: string): string {
  * then falls back to roles/review-types/{type}.md (deprecated) with a warning.
  */
 function loadReviewTypePrompt(projectRoot: string, reviewType: string): string | null {
-  // Primary location: consult-types/
   const primaryPath = `consult-types/${reviewType}.md`;
-  const primaryPrompt = readCodevFile(primaryPath, projectRoot);
-  if (primaryPrompt) {
-    return primaryPrompt;
+  const fallbackPath = `roles/review-types/${reviewType}.md`;
+
+  // 1. Check LOCAL consult-types/ first (preferred location)
+  if (hasLocalOverride(primaryPath, projectRoot)) {
+    return readCodevFile(primaryPath, projectRoot);
   }
 
-  // Fallback location: roles/review-types/ (deprecated)
-  const fallbackPath = `roles/review-types/${reviewType}.md`;
-  const fallbackPrompt = readCodevFile(fallbackPath, projectRoot);
-  if (fallbackPrompt) {
+  // 2. Check LOCAL roles/review-types/ (deprecated location with warning)
+  if (hasLocalOverride(fallbackPath, projectRoot)) {
     console.error(chalk.yellow('Warning: Review types in roles/review-types/ are deprecated.'));
     console.error(chalk.yellow('Move your custom types to consult-types/ for future compatibility.'));
-    return fallbackPrompt;
+    return readCodevFile(fallbackPath, projectRoot);
+  }
+
+  // 3. Fall back to embedded skeleton consult-types/ (default)
+  const skeletonPrompt = readCodevFile(primaryPath, projectRoot);
+  if (skeletonPrompt) {
+    return skeletonPrompt;
   }
 
   return null;
@@ -220,8 +225,8 @@ async function runConsultation(
     throw new Error(`Unknown model: ${model}`);
   }
 
-  // Check if CLI exists
-  if (!commandExists(config.cli)) {
+  // Check if CLI exists (skip for dry-run mode)
+  if (!dryRun && !commandExists(config.cli)) {
     throw new Error(`${config.cli} not found. Please install it first.`);
   }
 

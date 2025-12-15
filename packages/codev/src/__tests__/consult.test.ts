@@ -366,6 +366,48 @@ describe('consult command', () => {
       expect(promptPath).not.toBeNull();
       expect(promptPath).toContain('skeleton');
     });
+
+    it('should show deprecation warning when using deprecated roles/review-types/ location', async () => {
+      // Set up codev with ONLY the old roles/review-types directory (no consult-types/)
+      // Use a valid review type name (spec-review) but place it in the deprecated location
+      fs.mkdirSync(path.join(testBaseDir, 'codev', 'roles', 'review-types'), { recursive: true });
+      fs.writeFileSync(
+        path.join(testBaseDir, 'codev', 'roles', 'consultant.md'),
+        '# Consultant Role'
+      );
+      fs.writeFileSync(
+        path.join(testBaseDir, 'codev', 'roles', 'review-types', 'spec-review.md'),
+        '# Spec Review from deprecated location'
+      );
+
+      process.chdir(testBaseDir);
+
+      vi.resetModules();
+
+      // Capture console.error to verify deprecation warning
+      const errorOutput: string[] = [];
+      vi.spyOn(console, 'error').mockImplementation((...args) => {
+        errorOutput.push(args.join(' '));
+      });
+
+      const { consult } = await import('../commands/consult/index.js');
+
+      // Use dry-run to avoid actually running the CLI
+      // Use 'spec-review' which is a valid type but placed in deprecated location
+      await consult({
+        model: 'gemini',
+        subcommand: 'general',
+        args: ['test query'],
+        dryRun: true,
+        reviewType: 'spec-review',
+      });
+
+      // Should have deprecation warning about roles/review-types/
+      const hasDeprecationWarning = errorOutput.some(line =>
+        line.includes('deprecated') || line.includes('Deprecated')
+      );
+      expect(hasDeprecationWarning).toBe(true);
+    });
   });
 
   describe('query building', () => {
