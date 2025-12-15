@@ -490,6 +490,18 @@ Or for Gemini:
 
 See [INSTALL.md](INSTALL.md#architect-builder-pattern-optional) for full documentation.
 
+## Releases
+
+Codev releases are named after great examples of architecture from around the world. To release a new version, simply tell the AI:
+
+```
+Let's release v1.4.0
+```
+
+The AI guides you through the entire release process: pre-flight checks, maintenance cycle, E2E tests, version bump, release notes, GitHub release, and npm publish. You approve key decisions while the AI handles the mechanical steps.
+
+See [Release Notes](docs/releases/) for version history.
+
 ## Contributing
 
 We welcome contributions! Please help us improve Codev:

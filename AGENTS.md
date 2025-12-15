@@ -39,9 +39,22 @@ Future releases will continue this tradition, drawing from architectural wonders
 
 ### Release Process
 
-When preparing a new release, follow the **RELEASE protocol**: `codev/protocols/release/protocol.md`
+To release a new version, simply tell the AI:
+```
+Let's release v1.4.0
+```
 
-This protocol covers pre-flight checks, MAINTAIN cycle, e2e tests, tagging, GitHub release, and npm publish.
+The AI will guide you through the **RELEASE protocol** (`codev/protocols/release/protocol.md`):
+1. Pre-flight checks (clean git, no running builders, no incomplete work)
+2. MAINTAIN cycle (dead code removal, doc sync)
+3. E2E tests
+4. Version bump and git tag
+5. Release notes
+6. GitHub release
+7. npm publish
+8. Discussion forum announcement
+
+The AI handles all the mechanical steps while you approve key decisions.
 
 ## Quick Start
 
