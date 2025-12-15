@@ -1319,26 +1319,26 @@ Projects that are paused or canceled.
     notes: "PR #87 merged 2025-12-10."
 
   - id: "0047"
-    title: "Expert Tips - Codev Internals"
-    summary: "Documentation covering Codev internals for advanced users and contributors"
-    status: conceived
+    title: "Tips & Tricks Page"
+    summary: "Practical tips page for getting the most out of Codev and Agent Farm"
+    status: implemented
     priority: medium
     release: null
     files:
-      spec: null
-      plan: null
+      spec: codev/specs/0047-tips-page.md
+      plan: codev/plans/0047-tips-page.md
       review: null
     dependencies: []
-    tags: [documentation, internals]
+    tags: [documentation]
     timestamps:
       conceived_at: null
-      specified_at: null
-      planned_at: null
-      implementing_at: null
-      implemented_at: null
+      specified_at: "2025-12-13T21:00:00-08:00"
+      planned_at: "2025-12-13T21:00:00-08:00"
+      implementing_at: "2025-12-13T21:00:00-08:00"
+      implemented_at: "2025-12-13T21:05:00-08:00"
       committed_at: null
       integrated_at: null
-    notes: ""
+    notes: "Tips page at docs/tips.md, linked from README"
 
   - id: "0048"
     title: "Markdown Preview for af open"
@@ -1427,11 +1427,55 @@ Projects that are paused or canceled.
       committed_at: "2025-12-13T15:00:00-08:00"
       integrated_at: "2025-12-13T18:00:00-08:00"
     notes: "PR #105 merged. Validated and integrated."
+
+  - id: "0056"
+    title: "Consult Types Refactor"
+    summary: "Move consult review types from roles/review-types/ to consult-types/ for better discoverability"
+    status: planned
+    priority: medium
+    release: null
+    files:
+      spec: codev/specs/0056-consult-types-refactor.md
+      plan: codev/plans/0056-consult-types-refactor.md
+      review: null
+    dependencies: []
+    tags: [cli, consultation, refactoring]
+    timestamps:
+      conceived_at: "2025-12-15T00:00:00-08:00"
+      specified_at: null
+      planned_at: null
+      implementing_at: null
+      implemented_at: null
+      committed_at: null
+      integrated_at: null
+    notes: ""
+
+  - id: "0057"
+    title: "Dashboard Tab Overhaul"
+    summary: "Rename Projects tab to Dashboard, add Tabs and Files columns, replace welcome page"
+    status: planned
+    priority: high
+    release: null
+    files:
+      spec: codev/specs/0057-dashboard-tab-overhaul.md
+      plan: codev/plans/0057-dashboard-tab-overhaul.md
+      review: null
+    dependencies: []
+    tags: [dashboard, ui, ux]
+    timestamps:
+      conceived_at: "2025-12-15T00:00:00-08:00"
+      specified_at: null
+      planned_at: null
+      implementing_at: null
+      implemented_at: null
+      committed_at: null
+      integrated_at: null
+    notes: ""
 ```
 
 ## Next Available Number
 
-**0056** - Reserve this number for your next project
+**0058** - Reserve this number for your next project
 
 ---
 
