@@ -1431,13 +1431,13 @@ Projects that are paused or canceled.
   - id: "0056"
     title: "Consult Types Refactor"
     summary: "Move consult review types from roles/review-types/ to consult-types/ for better discoverability"
-    status: planned
+    status: integrated
     priority: medium
     release: null
     files:
       spec: codev/specs/0056-consult-types-refactor.md
       plan: codev/plans/0056-consult-types-refactor.md
-      review: null
+      review: codev/reviews/0056-consult-types-refactor.md
     dependencies: []
     tags: [cli, consultation, refactoring]
     timestamps:
@@ -1447,19 +1447,19 @@ Projects that are paused or canceled.
       implementing_at: null
       implemented_at: null
       committed_at: null
-      integrated_at: null
-    notes: ""
+      integrated_at: "2025-12-15T14:00:00-08:00"
+    notes: "PR #108 merged 2025-12-15"
 
   - id: "0057"
     title: "Dashboard Tab Overhaul"
     summary: "Rename Projects tab to Dashboard, add Tabs and Files columns, replace welcome page"
-    status: planned
+    status: integrated
     priority: high
     release: null
     files:
       spec: codev/specs/0057-dashboard-tab-overhaul.md
       plan: codev/plans/0057-dashboard-tab-overhaul.md
-      review: null
+      review: codev/reviews/0057-dashboard-tab-overhaul.md
     dependencies: []
     tags: [dashboard, ui, ux]
     timestamps:
@@ -1469,8 +1469,8 @@ Projects that are paused or canceled.
       implementing_at: null
       implemented_at: null
       committed_at: null
-      integrated_at: null
-    notes: ""
+      integrated_at: "2025-12-15T14:30:00-08:00"
+    notes: "PR #107 merged 2025-12-15. Three-column layout with Dashboard, Tabs, Files."
 ```
 
 ## Next Available Number
