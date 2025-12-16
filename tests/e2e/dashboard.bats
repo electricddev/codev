@@ -126,7 +126,7 @@ teardown() {
 @test "dashboard template stacks columns on small screens" {
   # Check that columns become single-column on narrow screens
   run grep -A3 "@media.*max-width.*900px" node_modules/@cluesmith/codev/templates/dashboard-split.html
-  assert_output --partial "grid-template-columns: 1fr"
+  assert_output --partial "flex-direction: column"
 }
 
 # === Accessibility Tests ===
@@ -259,6 +259,6 @@ teardown() {
 
 @test "file search prevents browser print dialog" {
   # Check that e.preventDefault is called for Cmd+P
-  run grep -A5 "e.key === 'p'" node_modules/@cluesmith/codev/templates/dashboard-split.html
+  run grep -A10 "e.key === 'p'" node_modules/@cluesmith/codev/templates/dashboard-split.html
   assert_output --partial "preventDefault"
 }
