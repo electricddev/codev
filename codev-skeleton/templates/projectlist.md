@@ -46,6 +46,23 @@ projects:
 3. **Renumbering**: If collision detected, newer project gets renumbered
 4. **Gaps OK**: Deleted projects leave gaps (don't reuse numbers)
 
+## Archiving Completed Projects
+
+Once projects are `integrated` or `abandoned` for 3+ days, move them to `projectlist-archive.md`:
+
+```
+codev/
+  projectlist.md          # Active projects (conceived → committed)
+  projectlist-archive.md  # Completed projects (integrated, abandoned)
+```
+
+**Why archive?**
+- Keeps daily work file small and fast
+- Full history still versioned in git
+- Can grep across both files when needed
+
+**Archive format**: Same YAML format, sorted by ID (historical record).
+
 ## Usage Guidelines
 
 ### When to Add a Project

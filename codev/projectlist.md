@@ -176,6 +176,28 @@ Projects currently in development (conceived through committed), sorted by prior
       integrated_at: "2025-12-16T00:00:00-08:00"
     notes: "What did I do today? button with AI summary. PR #111 merged 2025-12-15."
 
+  - id: "0060"
+    title: "Dashboard Modularization"
+    summary: "Split dashboard-split.html into separate CSS and JS files for maintainability"
+    status: planned
+    priority: medium
+    release: null
+    files:
+      spec: codev/specs/0060-dashboard-modularization.md
+      plan: codev/plans/0060-dashboard-modularization.md
+      review: null
+    dependencies: []
+    tags: [dashboard, refactoring, dx]
+    timestamps:
+      conceived_at: "2025-12-16T00:00:00-08:00"
+      specified_at: "2025-12-16T00:00:00-08:00"
+      planned_at: "2025-12-16T00:00:00-08:00"
+      implementing_at: null
+      implemented_at: null
+      committed_at: null
+      integrated_at: null
+    notes: "Split 4,738 line monolith into ~22 modular files."
+
   - id: "0039"
     title: "Codev CLI (First-Class Command)"
     summary: "Unified codev command as primary entry point: init, adopt, doctor, update, tower, consult"
