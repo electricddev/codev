@@ -134,29 +134,6 @@ Projects currently in development (conceived through committed), sorted by prior
 # High Priority
 
 
-  - id: "0060"
-    title: "Dashboard Modularization"
-    summary: "Split dashboard-split.html into separate CSS and JS files for maintainability"
-    status: implementing
-    priority: medium
-    release: null
-    files:
-      spec: codev/specs/0060-dashboard-modularization.md
-      plan: codev/plans/0060-dashboard-modularization.md
-      review: null
-    dependencies: []
-    tags: [dashboard, refactoring, dx]
-    timestamps:
-      conceived_at: "2025-12-16T00:00:00-08:00"
-      specified_at: "2025-12-16T00:00:00-08:00"
-      planned_at: "2025-12-16T00:00:00-08:00"
-      implementing_at: null
-      implemented_at: null
-      committed_at: null
-      integrated_at: null
-    notes: "Split 4,738 line monolith into ~22 modular files."
-
-
 
 
 
@@ -479,14 +456,34 @@ See Active Projects section above for full details and current status.
 Completed projects not associated with any formal release (ad-hoc fixes, documentation, improvements).
 
 ```yaml
-# (none currently)
+  - id: "0060"
+    title: "Dashboard Modularization"
+    summary: "Split dashboard-split.html into separate CSS and JS files for maintainability"
+    status: integrated
+    priority: medium
+    release: null
+    files:
+      spec: codev/specs/0060-dashboard-modularization.md
+      plan: codev/plans/0060-dashboard-modularization.md
+      review: codev/reviews/0060-dashboard-modularization.md
+    dependencies: []
+    tags: [dashboard, refactoring, dx]
+    timestamps:
+      conceived_at: "2025-12-16T00:00:00-08:00"
+      specified_at: "2025-12-16T00:00:00-08:00"
+      planned_at: "2025-12-16T00:00:00-08:00"
+      implementing_at: "2025-12-16T00:00:00-08:00"
+      implemented_at: "2025-12-16T00:00:00-08:00"
+      committed_at: "2025-12-16T00:00:00-08:00"
+      integrated_at: "2025-12-16T00:00:00-08:00"
+    notes: "Split 4,738 line monolith into ~22 modular files. Architect estimate: 7 hours. Actual: ~14 minutes."
 ```
 
 ---
 
 ## Next Available Number
 
-**0060** - Reserve this number for your next project
+**0061** - Reserve this number for your next project
 
 ---
 
