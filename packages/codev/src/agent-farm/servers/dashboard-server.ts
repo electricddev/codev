@@ -1116,8 +1116,16 @@ async function collectActivitySummary(projectRoot: string): Promise<ActivitySumm
 }
 
 
+// Insecure remote mode - set when bindHost is 0.0.0.0
+const insecureRemoteMode = bindHost === '0.0.0.0';
+
 // Security: Validate request origin
 function isRequestAllowed(req: http.IncomingMessage): boolean {
+  // Skip all security checks in insecure remote mode
+  if (insecureRemoteMode) {
+    return true;
+  }
+
   const host = req.headers.host;
   const origin = req.headers.origin;
 
@@ -1144,9 +1152,12 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // CORS headers - restrict to localhost only for security
+  // CORS headers
   const origin = req.headers.origin;
-  if (origin && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
+  if (insecureRemoteMode) {
+    // Allow any origin in insecure remote mode
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  } else if (origin && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
