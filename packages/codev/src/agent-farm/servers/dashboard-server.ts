@@ -46,7 +46,9 @@ const program = new Command()
   .name('dashboard-server')
   .description('Dashboard server for Agent Farm')
   .argument('[port]', 'Port to listen on', String(DEFAULT_DASHBOARD_PORT))
+  .argument('[bindHost]', 'Host to bind to (default: localhost, use 0.0.0.0 for remote)')
   .option('-p, --port <port>', 'Port to listen on (overrides positional argument)')
+  .option('-b, --bind <host>', 'Host to bind to (overrides positional argument)')
   .parse(process.argv);
 
 const opts = program.opts();
@@ -55,6 +57,9 @@ const args = program.args;
 // Support both positional arg and --port flag (flag takes precedence)
 const portArg = opts.port || args[0] || String(DEFAULT_DASHBOARD_PORT);
 const port = parseInt(portArg, 10);
+
+// Bind host: flag > positional arg > default (undefined = localhost)
+const bindHost = opts.bind || args[1] || undefined;
 
 if (isNaN(port) || port < 1 || port > 65535) {
   console.error(`Error: Invalid port "${portArg}". Must be a number between 1 and 65535.`);
@@ -1977,6 +1982,12 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(port, () => {
-  console.log(`Dashboard: http://localhost:${port}`);
-});
+if (bindHost) {
+  server.listen(port, bindHost, () => {
+    console.log(`Dashboard: http://${bindHost}:${port}`);
+  });
+} else {
+  server.listen(port, () => {
+    console.log(`Dashboard: http://localhost:${port}`);
+  });
+}

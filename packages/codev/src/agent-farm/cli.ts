@@ -51,6 +51,7 @@ export async function runAgentFarm(args: string[]): Promise<void> {
     .option('-c, --cmd <command>', 'Command to run in architect terminal')
     .option('-p, --port <port>', 'Port for architect terminal')
     .option('--no-role', 'Skip loading architect role prompt')
+    .option('--allow-insecure-remote', 'Bind to 0.0.0.0 for remote access (WARNING: no auth)')
     .action(async (options) => {
       try {
         const commands = getResolvedCommands();
@@ -58,6 +59,7 @@ export async function runAgentFarm(args: string[]): Promise<void> {
           cmd: options.cmd || commands.architect,
           port: options.port ? parseInt(options.port, 10) : undefined,
           noRole: !options.role,
+          allowInsecureRemote: options.allowInsecureRemote,
         });
       } catch (error) {
         logger.error(error instanceof Error ? error.message : String(error));

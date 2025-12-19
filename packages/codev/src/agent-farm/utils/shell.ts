@@ -188,6 +188,8 @@ export interface TtydOptions {
   cwd?: string;
   /** Custom index.html path for ttyd */
   customIndexPath?: string;
+  /** Bind host (default: localhost, use 0.0.0.0 for remote access) */
+  bindHost?: string;
 }
 
 /**
@@ -199,7 +201,7 @@ export interface TtydOptions {
  * @returns The spawned child process, or null if spawn failed
  */
 export function spawnTtyd(options: TtydOptions): ChildProcess | null {
-  const { port, sessionName, cwd, customIndexPath } = options;
+  const { port, sessionName, cwd, customIndexPath, bindHost } = options;
 
   const ttydArgs = [
     '-W',
@@ -207,6 +209,11 @@ export function spawnTtyd(options: TtydOptions): ChildProcess | null {
     '-t', 'theme={"background":"#000000"}',
     '-t', 'rightClickSelectsWord=true',
   ];
+
+  // Add bind interface if specified (default is localhost)
+  if (bindHost) {
+    ttydArgs.push('-i', bindHost);
+  }
 
   // Add custom index if provided and exists
   if (customIndexPath) {

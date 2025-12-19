@@ -130,11 +130,19 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
     logger.info('Using custom terminal with file click support');
   }
 
+  const bindHost = options.allowInsecureRemote ? '0.0.0.0' : undefined;
+
+  if (options.allowInsecureRemote) {
+    logger.warn('⚠️  INSECURE MODE: Binding to 0.0.0.0 - accessible from any network!');
+    logger.warn('   No authentication - anyone on your network can access the terminal.');
+  }
+
   const ttydProcess = spawnTtyd({
     port: architectPort,
     sessionName,
     cwd: config.projectRoot,
     customIndexPath: hasCustomIndex ? customIndexPath : undefined,
+    bindHost,
   });
 
   if (!ttydProcess?.pid) {
@@ -157,7 +165,7 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
 
   // Start the dashboard server on the main port
   const dashboardPort = config.dashboardPort;
-  await startDashboard(config.projectRoot, dashboardPort, architectPort);
+  await startDashboard(config.projectRoot, dashboardPort, architectPort, bindHost);
 
   logger.blank();
   logger.success('Agent Farm started!');
@@ -196,7 +204,7 @@ async function waitForServer(port: number, timeoutMs: number = 5000): Promise<bo
 /**
  * Start the dashboard HTTP server
  */
-async function startDashboard(projectRoot: string, port: number, _architectPort: number): Promise<void> {
+async function startDashboard(projectRoot: string, port: number, _architectPort: number, bindHost?: string): Promise<void> {
   const config = getConfig();
 
   // Try TypeScript source first (dev mode), then compiled JS
@@ -206,14 +214,20 @@ async function startDashboard(projectRoot: string, port: number, _architectPort:
   let command: string;
   let args: string[];
 
+  // Args: <port> [bindHost]
+  const serverArgs = [String(port)];
+  if (bindHost) {
+    serverArgs.push(bindHost);
+  }
+
   if (existsSync(tsScript)) {
     // Dev mode: run with tsx
     command = 'npx';
-    args = ['tsx', tsScript, String(port)];
+    args = ['tsx', tsScript, ...serverArgs];
   } else if (existsSync(jsScript)) {
     // Prod mode: run compiled JS
     command = 'node';
-    args = [jsScript, String(port)];
+    args = [jsScript, ...serverArgs];
   } else {
     logger.warn('Dashboard server not found, skipping dashboard');
     return;

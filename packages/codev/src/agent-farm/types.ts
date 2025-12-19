@@ -79,6 +79,7 @@ export interface StartOptions {
   cmd?: string;
   port?: number;
   noRole?: boolean;
+  allowInsecureRemote?: boolean;  // Bind to 0.0.0.0 instead of localhost
 }
 
 export interface SpawnOptions {
