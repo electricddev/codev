@@ -1,5 +1,10 @@
 // Tab Management - Rendering, Selection, Overflow
 
+// Get the base URL for ttyd/server connections (uses current hostname for remote access)
+function getBaseUrl(port) {
+  return `http://${window.location.hostname}:${port}`;
+}
+
 // Build tabs from initial state
 function buildTabsFromState() {
   const previousTabIds = new Set(tabs.map(t => t.id));
@@ -83,7 +88,7 @@ function renderArchitect() {
     // Only update iframe if port changed (avoid flashing on poll)
     if (currentArchitectPort !== state.architect.port) {
       currentArchitectPort = state.architect.port;
-      content.innerHTML = `<iframe src="http://localhost:${state.architect.port}" title="Architect Terminal" allow="clipboard-read; clipboard-write"></iframe>`;
+      content.innerHTML = `<iframe src="${getBaseUrl(state.architect.port)}" title="Architect Terminal" allow="clipboard-read; clipboard-write"></iframe>`;
     }
   } else {
     if (currentArchitectPort !== null) {
@@ -244,7 +249,7 @@ function renderTabContent() {
   if (currentTabPort !== tab.port || currentTabType !== tab.type) {
     currentTabPort = tab.port;
     currentTabType = tab.type;
-    content.innerHTML = `<iframe src="http://localhost:${tab.port}" title="${tab.name}" allow="clipboard-read; clipboard-write"></iframe>`;
+    content.innerHTML = `<iframe src="${getBaseUrl(tab.port)}" title="${tab.name}" allow="clipboard-read; clipboard-write"></iframe>`;
   }
 }
 
@@ -257,7 +262,7 @@ function refreshFileTab(tabId) {
     const content = document.getElementById('tab-content');
     const iframe = content.querySelector('iframe');
     if (iframe) {
-      iframe.src = `http://localhost:${tab.port}?t=${Date.now()}`;
+      iframe.src = `${getBaseUrl(tab.port)}?t=${Date.now()}`;
     }
   }
 }
@@ -481,20 +486,11 @@ function openInNewTab(tabId) {
   const tab = tabs.find(t => t.id === tabId);
   if (!tab) return;
 
-  let url;
-  if (tab.type === 'file') {
-    if (!tab.port) {
-      showToast('Tab not ready', 'error');
-      return;
-    }
-    url = `http://localhost:${tab.port}`;
-  } else {
-    if (!tab.port) {
-      showToast('Tab not ready', 'error');
-      return;
-    }
-    url = `http://localhost:${tab.port}`;
+  if (!tab.port) {
+    showToast('Tab not ready', 'error');
+    return;
   }
 
+  const url = getBaseUrl(tab.port);
   window.open(url, '_blank', 'noopener,noreferrer');
 }
