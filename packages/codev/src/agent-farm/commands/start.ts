@@ -115,7 +115,8 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
   }
 
   // Create tmux session with the command
-  await run(`tmux new-session -d -s ${sessionName} -x 200 -y 50 '${cmd}'`, { cwd: config.projectRoot });
+  // Note: Inner double quotes handle paths with spaces (e.g., "My Drive")
+  await run(`tmux new-session -d -s ${sessionName} -x 200 -y 50 '"${cmd}"'`, { cwd: config.projectRoot });
   await run(`tmux set-option -t ${sessionName} status off`);
   await run(`tmux set-option -t ${sessionName} -g mouse on`);
   await run(`tmux set-option -t ${sessionName} -g set-clipboard on`);
