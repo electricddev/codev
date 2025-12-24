@@ -415,6 +415,26 @@ When the user requests "Consult" or "consultation" (including variations like "u
 - Use GPT-5 Codex (gpt-5-codex) for coding and architecture perspective
 - Both models should be consulted unless explicitly specified otherwise
 
+### cmap (Consult Multiple Agents in Parallel)
+
+**cmap** is shorthand for "consult multiple agents in parallel in the background."
+
+When the user says **"cmap the PR"** or **"cmap spec 42"**, this means:
+1. Run a 3-way parallel review (Gemini, Codex, Claude)
+2. Run all three in the **background** (`run_in_background: true`)
+3. Return control to the user **immediately** so they can continue working
+4. Retrieve results later with `TaskOutput` when needed
+
+```bash
+# "cmap PR 95" translates to:
+consult --model gemini pr 95 &
+consult --model codex pr 95 &
+consult --model claude pr 95 &
+# User continues working while reviews run
+```
+
+**Key principle**: cmap is non-blocking. The user should never wait for consultations to complete before they can continue interacting.
+
 ## Consult Tool
 
 The `consult` CLI provides a unified interface for single-agent consultation via external AI CLIs (gemini-cli, codex, and claude). Each invocation is stateless (fresh process).
