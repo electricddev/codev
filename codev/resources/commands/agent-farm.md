@@ -30,6 +30,7 @@ af start [options]
 - `-c, --cmd <command>` - Command to run in architect terminal
 - `-p, --port <port>` - Port for architect terminal
 - `--no-role` - Skip loading architect role prompt
+- `--allow-insecure-remote` - Bind to 0.0.0.0 for remote access (see below)
 
 **Description:**
 
@@ -51,7 +52,59 @@ af start -p 4300
 
 # Start with specific command
 af start -c "claude --model opus"
+
+# Start with remote access enabled
+af start --allow-insecure-remote
 ```
+
+#### Remote Access
+
+By default, Agent Farm binds to `localhost` (127.0.0.1), making it accessible only from the local machine. To access the dashboard from another device (e.g., a tablet, phone, or another computer on your network):
+
+```bash
+af start --allow-insecure-remote
+```
+
+This binds the server to `0.0.0.0`, making it accessible from any network interface.
+
+**Finding your machine's IP:**
+```bash
+# macOS
+ipconfig getifaddr en0    # WiFi
+ipconfig getifaddr en1    # Ethernet
+
+# Linux
+hostname -I | awk '{print $1}'
+```
+
+**Accessing remotely:**
+```
+http://<your-ip>:4200
+```
+
+**⚠️ Security Warning:**
+
+The `--allow-insecure-remote` flag provides **no authentication**. Anyone on your network can:
+- View and interact with all terminals
+- Execute commands as your user
+- Access and modify your code
+
+**Only use this on trusted networks** (home WiFi, isolated development networks). Never use on:
+- Public WiFi (coffee shops, airports)
+- Shared office networks without VPN
+- Any network with untrusted users
+
+**For secure remote access**, consider:
+1. **SSH tunneling** (recommended):
+   ```bash
+   # On remote machine, tunnel to your dev machine
+   ssh -L 4200:localhost:4200 user@your-dev-machine
+   # Then open http://localhost:4200 on the remote machine
+   ```
+
+2. **VPN** - Access your home/office network securely
+
+3. **Tailscale/ZeroTier** - Mesh VPN for secure device-to-device connections
 
 ---
 
