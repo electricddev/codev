@@ -36,12 +36,10 @@ const fullFilePath = filePath;
 const displayPath = path.basename(filePath);
 
 /**
- * Find the open template
- * Template is bundled with agent-farm package in templates/ directory
+ * Find a template file
+ * Templates are bundled with agent-farm package in templates/ directory
  */
-function findTemplatePath(): string {
-  const filename = 'open.html';
-
+function findTemplatePath(filename: string): string {
   // Templates are at package root: packages/codev/templates/
   // From compiled: dist/agent-farm/servers/ -> ../../../templates/
   // From source: src/agent-farm/servers/ -> ../../../templates/
@@ -51,7 +49,7 @@ function findTemplatePath(): string {
   throw new Error(`Template not found: ${filename}`);
 }
 
-const templatePath = findTemplatePath();
+const templatePath = findTemplatePath('open.html');
 
 // Validate file exists
 if (!fs.existsSync(fullFilePath)) {
@@ -77,6 +75,10 @@ const isImage = imageExtensions.includes(ext);
 // Video detection
 const videoExtensions = ['webm', 'mp4', 'mov', 'avi'];
 const isVideo = videoExtensions.includes(ext);
+
+// STL (3D model) detection
+const isSTL = ext === 'stl';
+const stlTemplatePath = isSTL ? findTemplatePath('stl-viewer.html') : null;
 
 // MIME type mapping for images
 const imageMimeTypes: Record<string, string> = {
@@ -109,7 +111,25 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Serve annotation viewer
+  // Serve STL viewer for STL files
+  if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html') && isSTL && stlTemplatePath) {
+    try {
+      let template = fs.readFileSync(stlTemplatePath, 'utf-8');
+
+      // Replace placeholders
+      template = template.replace(/\{\{FILE_PATH\}\}/g, fullFilePath);
+      template = template.replace(/\{\{FILE\}\}/g, displayPath);
+
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(template);
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Error loading STL viewer: ' + (err as Error).message);
+    }
+    return;
+  }
+
+  // Serve annotation viewer for other files
   if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
     try {
       let template = fs.readFileSync(templatePath, 'utf-8');
@@ -221,6 +241,29 @@ const server = http.createServer((req, res) => {
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'text/plain' });
       res.end('Error reading video: ' + (err as Error).message);
+    }
+    return;
+  }
+
+  // Handle STL content (GET /api/stl)
+  if (req.method === 'GET' && req.url?.startsWith('/api/stl')) {
+    if (!isSTL) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Not an STL file');
+      return;
+    }
+
+    try {
+      const stlData = fs.readFileSync(fullFilePath);
+      res.writeHead(200, {
+        'Content-Type': 'model/stl',
+        'Content-Length': stlData.length,
+        'Cache-Control': 'no-cache'
+      });
+      res.end(stlData);
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Error reading STL: ' + (err as Error).message);
     }
     return;
   }

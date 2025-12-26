@@ -142,8 +142,27 @@ Projects currently in development (conceived through committed), sorted by prior
 
 # Medium Priority
 
-
-
+  - id: "0061"
+    title: "STL Viewer Support"
+    summary: "Add 3D STL file viewing to dashboard annotation viewer for OpenSCAD and CAD tool output"
+    status: implemented
+    priority: medium
+    release: null
+    files:
+      spec: codev/specs/0061-stl-viewer.md
+      plan: codev/plans/0061-stl-viewer.md
+      review: null
+    dependencies: []
+    tags: [dashboard, ui, 3d, cad]
+    timestamps:
+      conceived_at: "2025-12-25T00:00:00-08:00"
+      specified_at: "2025-12-25T00:00:00-08:00"
+      planned_at: "2025-12-25T00:00:00-08:00"
+      implementing_at: "2025-12-25T00:00:00-08:00"
+      implemented_at: "2025-12-26T00:00:00-08:00"
+      committed_at: null
+      integrated_at: null
+    notes: "Three.js STL viewer with standard views, wireframe, axes, grid toggles. Uses r128 for global builds."
 
 
   - id: "0023"
@@ -483,7 +502,7 @@ Completed projects not associated with any formal release (ad-hoc fixes, documen
 
 ## Next Available Number
 
-**0061** - Reserve this number for your next project
+**0062** - Reserve this number for your next project
 
 ---
 
