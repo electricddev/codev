@@ -164,6 +164,28 @@ Projects currently in development (conceived through committed), sorted by prior
       integrated_at: null
     notes: "Three.js 3D viewer (STL + 3MF). Uses ES Modules with Three.js r160. TICK-001: quaternion trackball. TICK-002: 3MF multi-color support. Both merged."
 
+  - id: "0062"
+    title: "Secure Remote Access"
+    summary: "SSH tunnel + reverse proxy: af start --remote for one-command remote access"
+    status: planned
+    priority: high
+    release: null
+    files:
+      spec: codev/specs/0062-secure-remote-access.md
+      plan: codev/plans/0062-secure-remote-access.md
+      review: null
+    dependencies: []
+    tags: [security, remote-access, ssh, agent-farm]
+    timestamps:
+      conceived_at: "2025-12-27T00:00:00-08:00"
+      specified_at: "2025-12-27T00:00:00-08:00"
+      planned_at: "2025-12-27T00:00:00-08:00"
+      implementing_at: null
+      implemented_at: null
+      committed_at: null
+      integrated_at: null
+    notes: "Reverse proxy consolidates ttyd instances behind one port. af start --remote for one-command iPad/remote access."
+
   - id: "0023"
     title: "Consult Tool (Stateful)"
     summary: "Add stateful session support to consult tool via stdio communication with persistent CLI processes"
@@ -501,7 +523,7 @@ Completed projects not associated with any formal release (ad-hoc fixes, documen
 
 ## Next Available Number
 
-**0062** - Reserve this number for your next project
+**0063** - Reserve this number for your next project
 
 ---
 
