@@ -2,78 +2,56 @@
 
 ## Metadata
 - **ID**: 0062
-- **Status**: approved
+- **Status**: specified
 - **Created**: 2025-12-23
+- **Updated**: 2025-12-28
 - **Protocol**: SPIDER
 
 ## Problem Statement
 
-Agent Farm currently binds to localhost only for security. A recent `--allow-insecure-remote` flag (or similar) enables binding to `0.0.0.0`, allowing access from other machines on the network. However, this exposes the dashboard and terminal sessions without authentication.
+Agent Farm currently binds to localhost only for security. Users want to run Agent Farm on remote machines (cloud VMs, local robots/devices) and access the dashboard from their primary workstation.
 
-**Current security model:**
-- ttyd binds to localhost (default behavior, no `-i` flag)
-- Dashboard server has DNS rebinding protection (rejects non-localhost Host headers)
-- CORS restricted to localhost origins
-- No authentication layer
+**Use cases:**
+1. **Cloud development** - Run Agent Farm on an EC2/GCP VM, access from laptop
+2. **Local robots/devices** - Run on `tidybot@192.168.50.16`, access from Mac
+3. **iPad/tablet access** - Use Agent Farm from an iPad on the same network
 
-**Problem with insecure remote:**
-- Anyone on the network can access terminals
-- Full shell access to the machine
-- Can execute arbitrary commands as the user
-- Can read/modify all project files
+**Current limitations:**
+- `--allow-insecure-remote` exposes dashboard without authentication (dangerous)
+- Manual SSH tunneling requires multiple steps across two machines
+- No seamless "just works" experience
 
-## Use Cases
+## Solution: `af start --remote`
 
-1. **iPad/tablet access** - Use Agent Farm from an iPad connected to the same network
-2. **Multi-machine workflow** - Architect on laptop, dashboard on desktop monitor
-3. **Team collaboration** - Share a dashboard with a colleague for pair programming
-4. **Remote development** - Access from coffee shop via VPN/Tailscale
+### User Experience
 
----
+```bash
+# On your Mac - one command does everything:
+af start --remote tidybot@192.168.50.16
 
-## Scope
+# Or with explicit project path:
+af start --remote tidybot@192.168.50.16:/home/tidybot/robot-project
+```
 
-### In Scope (MVP)
+This single command:
+1. SSHs into the remote machine
+2. Starts Agent Farm there
+3. Sets up SSH tunnel back to your local machine
+4. Opens `http://localhost:4200` in your browser
 
-1. **`af tunnel` command** - Outputs SSH command for remote access
-2. **Reverse proxy** - Routes `/terminal/:id` to correct ttyd instance
-3. **Dashboard UI update** - Change iframes to use proxied URLs
-4. **Documentation** - SSH tunnel setup guide
+The dashboard and terminals work identically to local development.
 
-### Out of Scope (Future)
-
-- SSH config generation (`af tunnel --ssh-config`)
-- Clipboard copy (`af tunnel --copy`)
-- Built-in SSH server (Option B with dropbear)
-- `--allow-insecure-remote` flag (deprecated by this feature)
-
-### Non-Goals
-
-- Building a new authentication system
-- TLS/certificate management
-- Token-based authentication
-- OAuth/SSO integration
-
----
-
-## Solution: SSH Tunnel with Reverse Proxy
-
-### Why SSH?
-
-- **Already authenticated** - keys or password
-- **Already encrypted** - no TLS setup needed
-- **Already deployed** - every dev machine has sshd (see Platform Notes)
-- **Works through NAT/firewalls**
-- **No new credentials to manage**
-
-### Architecture Overview
+### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Remote Device (iPad, laptop)                               │
+│  Your Mac (local)                                           │
 │  ┌─────────────────────────────────────────────────────┐    │
-│  │  SSH Client                                         │    │
-│  │  ssh -L 4200:localhost:4200 user@dev-machine        │    │
+│  │  af start --remote tidybot@192.168.50.16            │    │
+│  │                                                     │    │
+│  │  1. Spawns: ssh -L 4200:localhost:4200 tidybot@...  │    │
+│  │  2. Runs: cd /project && af start (on remote)       │    │
+│  │  3. Opens: http://localhost:4200 (local browser)    │    │
 │  └─────────────────────────────────────────────────────┘    │
 │                          │                                  │
 │                     Port 4200                               │
@@ -87,7 +65,7 @@ Agent Farm currently binds to localhost only for security. A recent `--allow-ins
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Dev Machine                                                │
+│  tidybot (remote)                                           │
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │  Dashboard Server (port 4200)                       │    │
 │  │                                                     │    │
@@ -106,95 +84,117 @@ Agent Farm currently binds to localhost only for security. A recent `--allow-ins
 
 ---
 
-## Component 1: `af tunnel` Command
+## Scope
+
+### In Scope (MVP)
+
+1. **`--remote` flag for `af start`** - Single command to start remote Agent Farm
+2. **Reverse proxy** - Routes `/terminal/:id` to correct ttyd instance
+3. **Dashboard UI update** - Change iframes to use proxied URLs
+4. **Documentation** - README, CLAUDE.md, AGENTS.md updates
+
+### Out of Scope (Future)
+
+- `af stop --remote` to tear down remote sessions
+- Multiple simultaneous remote connections
+- Remote project discovery/selection UI
+- Tailscale/WireGuard integration
+
+### Non-Goals
+
+- Building a new authentication system (SSH handles this)
+- TLS/certificate management (SSH handles this)
+- Token-based authentication
+
+---
+
+## Component 1: `af start --remote`
 
 ### Usage
 
 ```bash
-$ af tunnel
-To access Agent Farm remotely, run this on your other device:
+# Basic - uses current directory name to find project on remote
+af start --remote user@host
 
-  ssh -L 4200:localhost:4200 waleed@192.168.1.50
+# Explicit path
+af start --remote user@host:/path/to/project
 
-Then open: http://localhost:4200
-
-Tip: Add to ~/.ssh/config for easy access:
-  Host agent-farm
-    HostName 192.168.1.50
-    User waleed
-    LocalForward 4200 localhost:4200
+# With custom port
+af start --remote user@host --port 4300
 ```
 
 ### Implementation
 
 ```typescript
-// packages/codev/src/commands/tunnel.ts
+// packages/codev/src/agent-farm/commands/start.ts
 
-import { networkInterfaces } from 'os';
-import { userInfo } from 'os';
-
-export function tunnel() {
-  const state = loadState();
-  if (!state.running) {
-    console.error('Agent Farm is not running. Start with: af start');
-    process.exit(1);
-  }
-
-  const ips = getLocalIPs();
-  const user = userInfo().username;
-  const port = state.dashboardPort || 4200;
-
-  console.log('To access Agent Farm remotely, run this on your other device:\n');
-
-  for (const ip of ips) {
-    console.log(`  ssh -L ${port}:localhost:${port} ${user}@${ip}`);
-  }
-
-  console.log(`\nThen open: http://localhost:${port}`);
-  console.log(`\nTip: Add to ~/.ssh/config for easy access:`);
-  console.log(`  Host agent-farm`);
-  console.log(`    HostName ${ips[0]}`);
-  console.log(`    User ${user}`);
-  console.log(`    LocalForward ${port} localhost:${port}`);
+interface StartOptions {
+  remote?: string;  // user@host or user@host:/path
+  port?: number;
+  // ... existing options
 }
 
-function getLocalIPs(): string[] {
-  const interfaces = networkInterfaces();
-  const ips: string[] = [];
-
-  for (const [name, addrs] of Object.entries(interfaces)) {
-    if (!addrs) continue;
-    for (const addr of addrs) {
-      // Skip loopback, internal, and IPv6
-      if (addr.internal) continue;
-      if (addr.family !== 'IPv4') continue;
-      ips.push(addr.address);
-    }
+export async function start(options: StartOptions): Promise<void> {
+  if (options.remote) {
+    return startRemote(options);
   }
+  // ... existing local start logic
+}
 
-  return ips.length > 0 ? ips : ['<your-ip>'];
+async function startRemote(options: StartOptions): Promise<void> {
+  const { user, host, remotePath } = parseRemote(options.remote!);
+  const localPort = options.port || 4200;
+
+  logger.header('Starting Remote Agent Farm');
+  logger.kv('Host', `${user}@${host}`);
+  if (remotePath) logger.kv('Path', remotePath);
+  logger.kv('Local Port', localPort);
+
+  // Build the remote command
+  const cdCommand = remotePath ? `cd ${remotePath} && ` : '';
+  const remoteCommand = `${cdCommand}af start --port ${localPort}`;
+
+  // Spawn SSH with port forwarding
+  const ssh = spawn('ssh', [
+    '-L', `${localPort}:localhost:${localPort}`,
+    '-t',  // Force TTY for remote af start
+    `${user}@${host}`,
+    remoteCommand
+  ], {
+    stdio: ['inherit', 'pipe', 'inherit']
+  });
+
+  // Wait for Agent Farm to start (look for "Dashboard:" in output)
+  await waitForRemoteStart(ssh);
+
+  // Open local browser
+  await openBrowser(`http://localhost:${localPort}`);
+
+  logger.success('Remote Agent Farm connected!');
+  logger.kv('Dashboard', `http://localhost:${localPort}`);
+
+  // Keep SSH connection alive
+  ssh.on('exit', (code) => {
+    logger.info('Remote session ended');
+    process.exit(code || 0);
+  });
+}
+
+function parseRemote(remote: string): { user: string; host: string; remotePath?: string } {
+  // user@host:/path or user@host
+  const match = remote.match(/^([^@]+)@([^:]+)(?::(.+))?$/);
+  if (!match) {
+    throw new Error(`Invalid remote format: ${remote}. Use user@host or user@host:/path`);
+  }
+  return { user: match[1], host: match[2], remotePath: match[3] };
 }
 ```
 
-### IP Detection Strategy
+### Connection Lifecycle
 
-**Decision**: Show ALL non-loopback IPv4 addresses.
-
-Rationale:
-- Users may have multiple interfaces (WiFi, Ethernet, VPN)
-- Showing all lets user pick the right one
-- Better than guessing wrong
-
-Example output with multiple interfaces:
-```bash
-$ af tunnel
-To access Agent Farm remotely, run this on your other device:
-
-  ssh -L 4200:localhost:4200 waleed@192.168.1.50    # WiFi
-  ssh -L 4200:localhost:4200 waleed@10.0.0.5        # Ethernet
-
-Then open: http://localhost:4200
-```
+1. **Start**: `af start --remote` spawns SSH subprocess
+2. **Running**: SSH keeps tunnel open, Ctrl+C in local terminal ends session
+3. **Stop**: SSH exit triggers local cleanup
 
 ---
 
@@ -210,83 +210,45 @@ Then open: http://localhost:4200
 /terminal/util-abc123   → ttyd on port 4230
 ```
 
-### Implementation (http-proxy-middleware)
-
-**Decision**: Use `http-proxy-middleware` for its Express compatibility and built-in WebSocket support.
+### Implementation
 
 ```typescript
-// packages/codev/src/dashboard/proxy.ts
+// packages/codev/src/agent-farm/servers/dashboard-server.ts
 
-import { createProxyMiddleware } from 'http-proxy-middleware';
-import type { Express } from 'express';
-
-export function setupTerminalProxy(app: Express) {
-  app.use('/terminal/:id', (req, res, next) => {
-    const terminalId = req.params.id;
-    const port = getPortForTerminal(terminalId);
-
-    if (!port) {
-      res.status(404).json({ error: `Terminal not found: ${terminalId}` });
-      return;
-    }
-
-    const proxy = createProxyMiddleware({
-      target: `http://localhost:${port}`,
-      ws: true,
-      pathRewrite: (path) => path.replace(/^\/terminal\/[^/]+/, ''),
-      onError: (err, req, res) => {
-        console.error(`Proxy error for ${terminalId}:`, err.message);
-        if (!res.headersSent) {
-          res.status(502).json({ error: `Terminal unavailable: ${terminalId}` });
-        }
-      },
-    });
-
-    proxy(req, res, next);
-  });
-}
-
-function getPortForTerminal(id: string): number | null {
-  const state = loadState();
-
-  if (id === 'architect') {
-    return state.architect?.port || null;
-  }
-
-  const builder = state.builders?.find(b => `builder-${b.project}` === id);
-  if (builder) return builder.port;
-
-  const util = state.utils?.find(u => `util-${u.id}` === id);
-  if (util) return util.port;
-
-  return null;
-}
-```
-
-### WebSocket Upgrade Handling
-
-```typescript
-// Handle WebSocket upgrades explicitly
 import httpProxy from 'http-proxy';
 
-const wsProxy = httpProxy.createProxyServer({ ws: true });
+const terminalProxy = httpProxy.createProxyServer({ ws: true });
 
+terminalProxy.on('error', (err, req, res) => {
+  console.error('Terminal proxy error:', err.message);
+  if (res && !res.headersSent) {
+    res.writeHead(502, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Terminal unavailable' }));
+  }
+});
+
+// HTTP routing
+app.use('/terminal/:id', (req, res) => {
+  const port = getPortForTerminal(req.params.id);
+  if (!port) {
+    res.status(404).json({ error: `Terminal not found: ${req.params.id}` });
+    return;
+  }
+  req.url = req.url.replace(/^\/terminal\/[^/]+/, '') || '/';
+  terminalProxy.web(req, res, { target: `http://localhost:${port}` });
+});
+
+// WebSocket upgrade
 server.on('upgrade', (req, socket, head) => {
   const match = req.url?.match(/^\/terminal\/([^/]+)/);
   if (match) {
     const port = getPortForTerminal(match[1]);
     if (port) {
-      wsProxy.ws(req, socket, head, { target: `http://localhost:${port}` });
+      req.url = req.url.replace(/^\/terminal\/[^/]+/, '') || '/';
+      terminalProxy.ws(req, socket, head, { target: `http://localhost:${port}` });
     } else {
       socket.destroy();
     }
-  }
-});
-
-wsProxy.on('error', (err, req, socket) => {
-  console.error('WebSocket proxy error:', err.message);
-  if (socket && !socket.destroyed) {
-    socket.destroy();
   }
 });
 ```
@@ -297,128 +259,90 @@ wsProxy.on('error', (err, req, socket) => {
 
 ### Before (Direct ttyd URLs)
 
-```html
-<iframe src="http://localhost:4201"></iframe>
-<iframe src="http://localhost:4210"></iframe>
+```javascript
+content.innerHTML = `<iframe src="http://localhost:4201"></iframe>`;
 ```
 
 ### After (Proxied URLs)
 
-```html
-<iframe src="/terminal/architect"></iframe>
-<iframe src="/terminal/builder-0055"></iframe>
-```
+```javascript
+function getTerminalUrl(tab) {
+  if (tab.type === 'architect') return '/terminal/architect';
+  if (tab.type === 'builder') return `/terminal/builder-${tab.projectId}`;
+  if (tab.type === 'shell') return `/terminal/util-${tab.utilId}`;
+  // File tabs still use direct port (open-server)
+  if (tab.type === 'file') return `http://${window.location.hostname}:${tab.port}`;
+  return null;
+}
 
-### Why This Matters
-
-- **Local access**: Browser at `localhost:4200` → iframe loads `/terminal/architect` → resolves to `localhost:4200/terminal/architect`
-- **SSH tunnel**: Browser at `localhost:4200` (tunneled) → iframe loads `/terminal/architect` → same URL, tunneled through SSH
-
-The dashboard works identically in both cases.
-
----
-
-## Backward Compatibility
-
-### Migration Path
-
-1. **Existing sessions continue to work** - ttyd still runs on individual ports
-2. **Direct port access still works** - `localhost:4201` accessible locally
-3. **Dashboard transparently upgrades** - iframes use proxied URLs
-4. **No breaking changes** - old bookmarks to dashboard still work
-
-### Deprecation: `--allow-insecure-remote`
-
-If this flag exists, it should:
-1. Print deprecation warning: "Use `af tunnel` for secure remote access"
-2. Continue to function for one release cycle
-3. Be removed in a future version
-
----
-
-## Platform Notes
-
-### Windows Support
-
-SSH is available on Windows but requires setup:
-- **Windows 10+**: OpenSSH client is built-in; server requires enabling via Settings → Apps → Optional Features
-- **WSL2**: Full SSH support via Linux subsystem
-
-The `af tunnel` command should detect Windows and show appropriate guidance:
-
-```bash
-# On Windows without SSH server:
-$ af tunnel
-Note: Windows requires OpenSSH Server to be enabled.
-See: https://docs.microsoft.com/en-us/windows-server/administration/openssh/openssh_install_firstuse
-
-Alternatively, use WSL2 or Tailscale for remote access.
+content.innerHTML = `<iframe src="${getTerminalUrl(tab)}"></iframe>`;
 ```
 
 ---
 
 ## Error Handling
 
-### `af tunnel` Errors
+### `af start --remote` Errors
 
 | Condition | Behavior |
 |-----------|----------|
-| Agent Farm not running | Exit with error: "Agent Farm is not running. Start with: af start" |
-| No network interfaces found | Show placeholder: `ssh -L 4200:localhost:4200 user@<your-ip>` |
-| Windows without SSH server | Show setup instructions (see Platform Notes) |
+| SSH connection fails | Exit with error: "Could not connect to user@host" |
+| Remote `af` not found | Exit with error: "Agent Farm not installed on remote" |
+| Remote path not found | Exit with error: "Directory not found: /path" |
+| Port already in use | Exit with error: "Port 4200 already in use locally" |
+| SSH disconnects | Exit and show "Remote session ended" |
 
 ### Reverse Proxy Errors
 
 | Condition | HTTP Response |
 |-----------|---------------|
 | Unknown terminal ID | 404: `{"error": "Terminal not found: xyz"}` |
-| ttyd not responding | 502: `{"error": "Terminal unavailable: architect"}` |
-| WebSocket upgrade fails | Close socket, log error |
-
-### Dashboard UI Errors
-
-| Condition | Behavior |
-|-----------|----------|
-| Proxy returns 404 | Show "Terminal not found" in iframe area |
-| Proxy returns 502 | Show "Terminal starting..." with retry button |
-| WebSocket disconnects | Show reconnection UI (existing ttyd behavior) |
+| ttyd not responding | 502: `{"error": "Terminal unavailable"}` |
 
 ---
 
 ## Acceptance Criteria
 
-### `af tunnel` Command
+### `af start --remote`
 
-- [ ] Outputs complete SSH command with correct port
-- [ ] Detects and displays all non-loopback IPv4 addresses
-- [ ] Shows current username in SSH command
-- [ ] Works when no builders are active (architect only)
-- [ ] Shows helpful error when Agent Farm not running
-- [ ] On Windows, shows SSH server setup instructions if needed
+- [ ] Parses `user@host` and `user@host:/path` formats
+- [ ] Establishes SSH connection with port forwarding
+- [ ] Runs `af start` on remote machine
+- [ ] Waits for remote Agent Farm to be ready
+- [ ] Opens local browser to `http://localhost:4200`
+- [ ] Keeps connection alive until Ctrl+C
+- [ ] Clean exit on SSH disconnect
+- [ ] Shows helpful errors for common failures
 
 ### Reverse Proxy
 
 - [ ] Routes `/terminal/architect` to architect ttyd port
-- [ ] Routes `/terminal/builder-XXXX` to correct builder ttyd port
-- [ ] Routes `/terminal/util-XXXX` to correct utility ttyd port
+- [ ] Routes `/terminal/builder-XXXX` to correct builder port
+- [ ] Routes `/terminal/util-XXXX` to correct utility port
 - [ ] Proxies WebSocket connections bidirectionally
 - [ ] Returns 404 for unknown terminal IDs
 - [ ] Returns 502 when target ttyd is unavailable
-- [ ] Handles concurrent connections to multiple terminals
 
 ### Dashboard UI
 
 - [ ] All terminal iframes use `/terminal/:id` URLs
-- [ ] Terminals work identically via local access and SSH tunnel
-- [ ] WebSocket reconnection works through proxy
-- [ ] Error states displayed appropriately
+- [ ] Terminals work identically via local and remote access
+- [ ] File tabs still work (note: won't load through tunnel)
 
-### Security
+---
 
-- [ ] Dashboard still rejects non-localhost Host headers
-- [ ] Proxy only routes to local ttyd instances (no SSRF)
-- [ ] No new network listeners (only existing port 4200)
-- [ ] No credentials stored or transmitted
+## Deprecation
+
+### `--allow-insecure-remote`
+
+This flag is deprecated. On use:
+1. Print warning: "DEPRECATED: Use `af start --remote user@host` for secure remote access"
+2. Continue to function for backward compatibility
+3. Remove in a future version
+
+### `af tunnel` (if implemented)
+
+The `af tunnel` command from the original design is not needed. Remove if present.
 
 ---
 
@@ -426,71 +350,43 @@ Alternatively, use WSL2 or Tailscale for remote access.
 
 ### Unit Tests
 
-1. **IP detection**
-   - Mock `networkInterfaces()` with multiple interfaces
-   - Verify all non-loopback IPv4 addresses returned
-   - Verify loopback (127.0.0.1) excluded
-   - Verify IPv6 excluded
+1. **Remote string parsing**
+   - `user@host` → { user: 'user', host: 'host', remotePath: undefined }
+   - `user@host:/path` → { user: 'user', host: 'host', remotePath: '/path' }
+   - Invalid format → throws error
 
 2. **Port lookup**
-   - Verify `architect` maps to architect port
-   - Verify `builder-0055` maps to correct builder port
-   - Verify unknown ID returns null
+   - `architect` → architect port
+   - `builder-0055` → correct builder port
+   - Unknown ID → null
 
 ### Integration Tests
 
-3. **`af tunnel` command**
-   - Start Agent Farm, run `af tunnel`, verify output format
-   - Verify SSH command includes correct port and IP
-   - Verify error when Agent Farm not running
-
-4. **Reverse proxy routing**
-   - Start Agent Farm with architect + 2 builders
-   - HTTP GET `/terminal/architect` → 200 (ttyd HTML)
-   - HTTP GET `/terminal/builder-0055` → 200
+3. **Reverse proxy routing**
+   - HTTP GET `/terminal/architect` → 200
    - HTTP GET `/terminal/unknown` → 404
-
-5. **WebSocket proxying**
-   - Connect WebSocket to `/terminal/architect`
-   - Send terminal input, verify response
-   - Disconnect, verify clean shutdown
+   - WebSocket to `/terminal/architect` → connects
 
 ### Manual Tests
 
-6. **End-to-end SSH tunnel**
-   - Start Agent Farm on machine A
-   - Run `af tunnel`, copy SSH command
-   - On machine B, run SSH command
-   - Open `http://localhost:4200` on machine B
-   - Interact with terminals, verify functionality
-
-7. **Concurrent sessions**
-   - Two browsers connected via SSH tunnel
-   - Both interact with same terminal
-   - Verify no conflicts or corruption
-
----
-
-## Security Considerations
-
-1. **SSH is the security layer** - All auth/encryption delegated to SSH
-2. **No new attack surface** - Dashboard stays localhost-only, accessed via tunnel
-3. **Key management** - Users responsible for SSH key security (existing practice)
-4. **Reverse proxy** - Only proxies to local ttyd instances, no external connections
-5. **Host header validation** - Keep existing DNS rebinding protection
+4. **End-to-end remote access**
+   - Run `af start --remote user@remote-host`
+   - Verify dashboard opens locally
+   - Interact with architect terminal
+   - Spawn builder, verify it works
+   - Ctrl+C to end session
 
 ---
 
 ## Dependencies
 
-- **New npm packages**: `http-proxy-middleware` (or `http-proxy`)
+- **New npm packages**: `http-proxy` (lightweight, no express dependency)
 - **No external services required**
-- **No new system dependencies**
+- **Requires SSH client on local machine** (standard on macOS/Linux)
 
 ---
 
 ## References
 
-- [SSH Port Forwarding Guide](https://www.ssh.com/academy/ssh/tunneling/example)
-- [http-proxy-middleware docs](https://github.com/chimurai/http-proxy-middleware)
-- [ttyd WebSocket protocol](https://github.com/tsl0922/ttyd#protocol)
+- [SSH Port Forwarding](https://www.ssh.com/academy/ssh/tunneling/example)
+- [http-proxy docs](https://github.com/http-party/node-http-proxy)

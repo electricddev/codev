@@ -30,7 +30,8 @@ af start [options]
 - `-c, --cmd <command>` - Command to run in architect terminal
 - `-p, --port <port>` - Port for architect terminal
 - `--no-role` - Skip loading architect role prompt
-- `--allow-insecure-remote` - Bind to 0.0.0.0 for remote access (see below)
+- `-r, --remote <target>` - Start Agent Farm on remote machine (see below)
+- `--allow-insecure-remote` - Bind to 0.0.0.0 for remote access (deprecated)
 
 **Description:**
 
@@ -53,28 +54,37 @@ af start -p 4300
 # Start with specific command
 af start -c "claude --model opus"
 
-# Start with remote access enabled
-af start --allow-insecure-remote
+# Start on remote machine
+af start --remote user@host
 ```
 
 #### Remote Access
 
-By default, Agent Farm binds to `localhost` (127.0.0.1), making it accessible only from the local machine. For secure remote access, use `af tunnel`:
+Start Agent Farm on a remote machine and access it from your local workstation with a single command:
 
 ```bash
-# Step 1: Start Agent Farm
-af start
+# On your local machine - one command does everything:
+af start --remote user@remote-host
 
-# Step 2: Get SSH command for your network
-af tunnel
+# Or with explicit project path:
+af start --remote user@remote-host:/path/to/project
 
-# Step 3: Run the SSH command on your remote device
-# Example output: ssh -L 4200:localhost:4200 youruser@192.168.1.50
-
-# Step 4: Open http://localhost:4200 in your remote browser
+# With custom port:
+af start --remote user@remote-host --port 4300
 ```
 
-See [af tunnel](#af-tunnel) for full documentation.
+This single command:
+1. SSHs into the remote machine
+2. Starts Agent Farm there
+3. Sets up SSH tunnel back to your local machine
+4. Opens `http://localhost:4200` in your browser
+
+The dashboard and all terminals work identically to local development. Press Ctrl+C to disconnect.
+
+**Prerequisites:**
+- SSH server must be running on the remote machine
+- Agent Farm (`af`) must be installed on the remote machine
+- SSH keys configured for passwordless access (recommended)
 
 **Legacy mode** (deprecated):
 
@@ -83,7 +93,7 @@ See [af tunnel](#af-tunnel) for full documentation.
 af start --allow-insecure-remote
 ```
 
-The `--allow-insecure-remote` flag binds to `0.0.0.0` with no authentication. Use `af tunnel` instead for secure remote access via SSH.
+The `--allow-insecure-remote` flag binds to `0.0.0.0` with no authentication. Use `--remote` instead for secure access via SSH.
 
 ---
 
@@ -103,62 +113,6 @@ Stops all running agent-farm processes including:
 - Dashboard servers
 
 Does NOT clean up worktrees - use `af cleanup` for that.
-
----
-
-### af tunnel
-
-Display SSH tunnel command for secure remote access.
-
-```bash
-af tunnel
-```
-
-**Description:**
-
-Outputs the SSH command needed to access Agent Farm from another device. The command uses SSH port forwarding to tunnel the dashboard through a single port, providing secure encrypted access with SSH authentication.
-
-**Example output:**
-
-```
-Remote Access via SSH Tunnel
-
-Run this command on your other device:
-
-  ssh -L 4200:localhost:4200 youruser@192.168.1.50
-
-Then open: http://localhost:4200
-
-Tip: Add to ~/.ssh/config for easy access:
-  Host agent-farm
-    HostName 192.168.1.50
-    User youruser
-    LocalForward 4200 localhost:4200
-```
-
-**How it works:**
-
-1. Detects your machine's non-loopback IPv4 addresses
-2. Gets the dashboard port from the running Agent Farm instance
-3. Outputs ready-to-use SSH commands
-
-**Prerequisites:**
-
-- SSH server must be running on the development machine
-- On macOS: System Settings → General → Sharing → Remote Login
-- On Windows: Enable OpenSSH Server or use WSL2
-- On Linux: `sudo systemctl start sshd`
-
-**Benefits over `--allow-insecure-remote`:**
-
-- **Authentication**: SSH key or password required
-- **Encryption**: All traffic encrypted
-- **Single port**: Only dashboard port forwarded
-- **No network exposure**: Server remains bound to localhost
-
-**Limitations:**
-
-- **File tabs**: Clicking "Open File" in terminals opens files via `open-server` on separate ports. These file tabs won't load through the single-port tunnel. Terminals and the dashboard work fully; file viewing requires local access or forwarding additional ports.
 
 ---
 

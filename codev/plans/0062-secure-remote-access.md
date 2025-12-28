@@ -4,15 +4,18 @@
 - **Spec**: codev/specs/0062-secure-remote-access.md
 - **Status**: approved
 - **Created**: 2025-12-25
+- **Updated**: 2025-12-28 (spec changed to `--remote` flag)
 
 ## Overview
 
 Implement secure remote access to Agent Farm via SSH tunneling, enabled by a reverse proxy that consolidates all ttyd instances behind a single port.
 
 **Components**:
-1. Reverse proxy in dashboard server
-2. Dashboard UI updates (iframe URLs)
-3. `af tunnel` CLI command
+1. Reverse proxy in dashboard server (implemented)
+2. Dashboard UI updates (iframe URLs) (implemented)
+3. `af start --remote` flag for one-command remote access
+
+> **Note**: Original plan included `af tunnel` command. Spec was updated to use `--remote` flag on `af start` instead, which provides a better UX (single command does everything).
 
 ---
 
@@ -187,98 +190,55 @@ iframe.onerror = () => {
 
 ---
 
-### Phase 3: `af tunnel` Command
+### Phase 3: `af start --remote` Flag
 
-**Goal**: Output SSH command for remote access.
+> **Spec Update**: Original plan was `af tunnel` command. Spec changed to `--remote` flag on `af start` for better UX.
 
-**Files to create**:
-- `packages/codev/src/agent-farm/commands/tunnel.ts`
+**Goal**: One command to start Agent Farm on remote machine with SSH tunnel.
 
 **Files to modify**:
-- `packages/codev/src/agent-farm/index.ts` - Register tunnel command
+- `packages/codev/src/agent-farm/commands/start.ts` - Add `startRemote()` function
+- `packages/codev/src/agent-farm/cli.ts` - Add `--remote` option
+- `packages/codev/src/agent-farm/types.ts` - Add `remote` to `StartOptions`
 
 **Implementation**:
 
 ```typescript
-// packages/codev/src/agent-farm/commands/tunnel.ts
+// packages/codev/src/agent-farm/commands/start.ts
 
-import { networkInterfaces, userInfo, platform } from 'os';
-import { loadState } from '../state.js';
-
-export function tunnelCommand(): void {
-  const state = loadState();
-
-  // Check if Agent Farm is running (architect exists)
-  if (!state.architect) {
-    console.error('Agent Farm is not running. Start with: af start');
-    process.exit(1);
+export function parseRemote(remote: string): { user: string; host: string; remotePath?: string } {
+  const match = remote.match(/^([^@]+)@([^:]+)(?::(.+))?$/);
+  if (!match) {
+    throw new Error(`Invalid remote format: ${remote}. Use user@host or user@host:/path`);
   }
-
-  // Windows-specific guidance
-  if (platform() === 'win32') {
-    console.log('Note: Windows requires OpenSSH Server to be enabled.');
-    console.log('See: https://docs.microsoft.com/en-us/windows-server/administration/openssh/openssh_install_firstuse');
-    console.log('');
-    console.log('Alternatively, use WSL2 or Tailscale for remote access.');
-    console.log('');
-  }
-
-  const ips = getLocalIPs();
-  const user = userInfo().username;
-  const dashboardPort = state.architect.port - 1; // Architect is port + 1
-
-  console.log('To access Agent Farm remotely, run this on your other device:\n');
-
-  if (ips.length === 0) {
-    console.log(`  ssh -L ${dashboardPort}:localhost:${dashboardPort} ${user}@<your-ip>`);
-  } else {
-    for (const ip of ips) {
-      console.log(`  ssh -L ${dashboardPort}:localhost:${dashboardPort} ${user}@${ip}`);
-    }
-  }
-
-  console.log(`\nThen open: http://localhost:${dashboardPort}`);
-  console.log(`\nTip: Add to ~/.ssh/config for easy access:`);
-  console.log(`  Host agent-farm`);
-  console.log(`    HostName ${ips[0] || '<your-ip>'}`);
-  console.log(`    User ${user}`);
-  console.log(`    LocalForward ${dashboardPort} localhost:${dashboardPort}`);
+  return { user: match[1], host: match[2], remotePath: match[3] };
 }
 
-function getLocalIPs(): string[] {
-  const interfaces = networkInterfaces();
-  const ips: string[] = [];
+async function startRemote(options: StartOptions): Promise<void> {
+  const { user, host, remotePath } = parseRemote(options.remote!);
+  const localPort = options.port || config.dashboardPort;
 
-  for (const [name, addrs] of Object.entries(interfaces)) {
-    if (!addrs) continue;
-    for (const addr of addrs) {
-      // Skip loopback, internal, and IPv6
-      if (addr.internal) continue;
-      if (addr.family !== 'IPv4') continue;
-      ips.push(addr.address);
-    }
-  }
+  // Build remote command
+  const cdCommand = remotePath ? `cd ${remotePath}` : `cd ${projectName}`;
+  const remoteCommand = `${cdCommand} && af start --port ${localPort}`;
 
-  return ips;
+  // Spawn SSH with port forwarding
+  const ssh = spawn('ssh', [
+    '-L', `${localPort}:localhost:${localPort}`,
+    '-t',
+    `${user}@${host}`,
+    remoteCommand
+  ]);
+
+  // Parse stdout for dashboard URL, then open browser
+  // Handle exit/SIGINT
 }
-```
-
-**Register in CLI** (`packages/codev/src/agent-farm/index.ts`):
-```typescript
-import { tunnelCommand } from './commands/tunnel.js';
-
-// Add to command definitions:
-program
-  .command('tunnel')
-  .description('Show SSH command for remote access')
-  .action(tunnelCommand);
 ```
 
 **Tests**:
-- Unit test: `getLocalIPs()` filters correctly (mock `networkInterfaces()`)
-- Integration test: `af tunnel` when running → outputs SSH command
-- Integration test: `af tunnel` when not running → error message
-- Manual test: Windows platform detection (if available)
+- Unit test: `parseRemote()` parses `user@host` and `user@host:/path`
+- Unit test: `parseRemote()` throws on invalid format
+- Manual test: `af start --remote user@host` connects and opens browser
 
 ---
 

@@ -80,6 +80,7 @@ export interface StartOptions {
   port?: number;
   noRole?: boolean;
   allowInsecureRemote?: boolean;  // Bind to 0.0.0.0 instead of localhost
+  remote?: string;  // user@host or user@host:/path for remote access
 }
 
 export interface SpawnOptions {

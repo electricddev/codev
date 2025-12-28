@@ -293,23 +293,32 @@ The Architect-Builder pattern enables parallel AI-assisted development by separa
 # Manage port allocations (for multi-project support)
 ./codev/bin/agent-farm ports list
 ./codev/bin/agent-farm ports cleanup
-
-# Get SSH command for remote access
-./codev/bin/agent-farm tunnel
 ```
 
 ### Remote Access
 
-Access Agent Farm from another device (iPad, laptop, etc.) via SSH tunnel:
+Start Agent Farm on a remote machine and access it from your local workstation:
 
-1. Start Agent Farm: `af start`
-2. Get SSH command: `af tunnel`
-3. Run the SSH command on your remote device
-4. Open http://localhost:4200 in your browser
+```bash
+# On your local machine - one command does everything:
+af start --remote user@remote-host
 
-The dashboard and all terminals work identically via the tunnel. SSH handles authentication and encryption.
+# Or with explicit project path:
+af start --remote user@remote-host:/path/to/project
 
-**Note**: Requires SSH server on the dev machine. On Windows, enable OpenSSH Server or use WSL2.
+# With custom port:
+af start --remote user@remote-host --port 4300
+```
+
+This single command:
+1. SSHs into the remote machine
+2. Starts Agent Farm there
+3. Sets up SSH tunnel back to your local machine
+4. Opens `http://localhost:4200` in your browser
+
+The dashboard and all terminals work identically to local development. Press Ctrl+C to disconnect.
+
+**Note**: Requires SSH server on the remote machine. On Windows, enable OpenSSH Server or use WSL2.
 
 ### Configuration
 

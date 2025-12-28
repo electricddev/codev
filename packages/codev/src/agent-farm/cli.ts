@@ -52,6 +52,7 @@ export async function runAgentFarm(args: string[]): Promise<void> {
     .option('-p, --port <port>', 'Port for architect terminal')
     .option('--no-role', 'Skip loading architect role prompt')
     .option('--allow-insecure-remote', 'Bind to 0.0.0.0 for remote access (WARNING: no auth)')
+    .option('-r, --remote <target>', 'Start Agent Farm on remote machine (user@host or user@host:/path)')
     .action(async (options) => {
       try {
         const commands = getResolvedCommands();
@@ -60,6 +61,7 @@ export async function runAgentFarm(args: string[]): Promise<void> {
           port: options.port ? parseInt(options.port, 10) : undefined,
           noRole: !options.role,
           allowInsecureRemote: options.allowInsecureRemote,
+          remote: options.remote,
         });
       } catch (error) {
         logger.error(error instanceof Error ? error.message : String(error));
@@ -298,20 +300,6 @@ export async function runAgentFarm(args: string[]): Promise<void> {
       const { tutorial } = await import('./commands/tutorial.js');
       try {
         await tutorial(options);
-      } catch (error) {
-        logger.error(error instanceof Error ? error.message : String(error));
-        process.exit(1);
-      }
-    });
-
-  // Tunnel command (Spec 0062 - Secure Remote Access)
-  program
-    .command('tunnel')
-    .description('Show SSH command for secure remote access')
-    .action(async () => {
-      const { tunnel } = await import('./commands/tunnel.js');
-      try {
-        tunnel({});
       } catch (error) {
         logger.error(error instanceof Error ? error.message : String(error));
         process.exit(1);
