@@ -229,16 +229,17 @@
     import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
     import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
 
-    // Configuration (injected by server)
-    const FILE_PATH = '{{FILE_PATH}}';
+    // Configuration (injected by server with proper escaping)
+    const FILE_PATH = {{FILE_PATH_JSON}};  // JSON-encoded by server
     const FILE_NAME = '{{FILE}}';
     const FORMAT = '{{FORMAT}}';  // 'stl' or '3mf'
 
     // Three.js setup
     let scene, camera, renderer, controls;
     let model = null;  // Can be mesh (STL) or group (3MF)
+    let wireframeMesh = null;  // Wireframe overlay mesh
     let axesHelper, gridHelper;
-    let wireframeMode = false;
+    let viewMode = 'solid';  // 'solid', 'wireframe', or 'both'
     let showAxes = true;
     let showGrid = true;
     let modelCenter = new THREE.Vector3();
@@ -513,19 +514,106 @@
     }
 
     function toggleWireframe() {
-      wireframeMode = !wireframeMode;
-      if (model) {
+      // Cycle through modes: solid -> wireframe -> both -> solid
+      if (viewMode === 'solid') {
+        viewMode = 'wireframe';
+      } else if (viewMode === 'wireframe') {
+        viewMode = 'both';
+      } else {
+        viewMode = 'solid';
+      }
+      applyViewMode();
+    }
+
+    function applyViewMode() {
+      if (!model) return;
+
+      // Remove existing wireframe overlay if any
+      if (wireframeMesh) {
+        scene.remove(wireframeMesh);
+        wireframeMesh.traverse((child) => {
+          if (child.isMesh) {
+            child.geometry.dispose();
+            child.material.dispose();
+          }
+        });
+        wireframeMesh = null;
+      }
+
+      if (viewMode === 'solid') {
+        // Solid mode: no wireframe
         model.traverse((child) => {
           if (child.isMesh && child.material) {
             if (Array.isArray(child.material)) {
-              child.material.forEach(m => m.wireframe = wireframeMode);
+              child.material.forEach(m => m.wireframe = false);
             } else {
-              child.material.wireframe = wireframeMode;
+              child.material.wireframe = false;
             }
           }
         });
+        wireframeBtn.textContent = 'Wire';
+        wireframeBtn.classList.remove('active');
+      } else if (viewMode === 'wireframe') {
+        // Wireframe only mode
+        model.traverse((child) => {
+          if (child.isMesh && child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => m.wireframe = true);
+            } else {
+              child.material.wireframe = true;
+            }
+          }
+        });
+        wireframeBtn.textContent = 'Wire';
+        wireframeBtn.classList.add('active');
+      } else {
+        // Both mode: solid + black wireframe overlay
+        model.traverse((child) => {
+          if (child.isMesh && child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => m.wireframe = false);
+            } else {
+              child.material.wireframe = false;
+            }
+          }
+        });
+        // Create wireframe overlay
+        wireframeMesh = createWireframeOverlay(model);
+        if (wireframeMesh) {
+          scene.add(wireframeMesh);
+        }
+        wireframeBtn.textContent = 'Both';
+        wireframeBtn.classList.add('active');
       }
-      wireframeBtn.classList.toggle('active', wireframeMode);
+    }
+
+    function createWireframeOverlay(sourceModel) {
+      // Create a group to hold wireframe meshes
+      const wireframeGroup = new THREE.Group();
+      wireframeGroup.position.copy(sourceModel.position);
+      wireframeGroup.rotation.copy(sourceModel.rotation);
+      wireframeGroup.scale.copy(sourceModel.scale);
+
+      sourceModel.traverse((child) => {
+        if (child.isMesh) {
+          const wireGeom = child.geometry.clone();
+          const wireMat = new THREE.MeshBasicMaterial({
+            color: 0x000000,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.3
+          });
+          const wireMesh = new THREE.Mesh(wireGeom, wireMat);
+          wireMesh.position.copy(child.position);
+          wireMesh.rotation.copy(child.rotation);
+          wireMesh.scale.copy(child.scale);
+          // Slight offset to prevent z-fighting
+          wireMesh.renderOrder = 1;
+          wireframeGroup.add(wireMesh);
+        }
+      });
+
+      return wireframeGroup;
     }
 
     function toggleAxes() {
@@ -576,6 +664,18 @@
     }
 
     function reloadModel() {
+      // Remove old wireframe overlay
+      if (wireframeMesh) {
+        scene.remove(wireframeMesh);
+        wireframeMesh.traverse((child) => {
+          if (child.isMesh) {
+            child.geometry.dispose();
+            child.material.dispose();
+          }
+        });
+        wireframeMesh = null;
+      }
+
       // Remove old model
       if (model) {
         scene.remove(model);
@@ -616,17 +716,19 @@
         // Recalculate bounding box after translation
         geometry.computeBoundingBox();
 
-        // Create new material (preserving wireframe state)
+        // Create new material
         const material = new THREE.MeshPhongMaterial({
           color: 0x3b82f6,
           specular: 0x111111,
           shininess: 30,
-          flatShading: false,
-          wireframe: wireframeMode
+          flatShading: false
         });
 
         model = new THREE.Mesh(geometry, material);
         scene.add(model);
+
+        // Re-apply current view mode
+        applyViewMode();
 
         // Update info
         const triangles = geometry.attributes.position.count / 3;
@@ -656,21 +758,11 @@
         const newBox = new THREE.Box3().setFromObject(group);
         group.position.y -= newBox.min.y;
 
-        // Apply wireframe state
-        if (wireframeMode) {
-          group.traverse((child) => {
-            if (child.isMesh && child.material) {
-              if (Array.isArray(child.material)) {
-                child.material.forEach(m => m.wireframe = true);
-              } else {
-                child.material.wireframe = true;
-              }
-            }
-          });
-        }
-
         model = group;
         scene.add(model);
+
+        // Re-apply current view mode
+        applyViewMode();
 
         // Count triangles and objects
         let triangleCount = 0;

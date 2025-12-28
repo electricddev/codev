@@ -51,6 +51,18 @@ function findTemplatePath(filename: string): string {
 
 const templatePath = findTemplatePath('open.html');
 
+/**
+ * Escape string for safe HTML insertion
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Validate file exists
 if (!fs.existsSync(fullFilePath)) {
   console.error(`File not found: ${fullFilePath}`);
@@ -119,9 +131,12 @@ const server = http.createServer((req, res) => {
     try {
       let template = fs.readFileSync(viewerTemplatePath3D, 'utf-8');
 
-      // Replace placeholders
-      template = template.replace(/\{\{FILE_PATH\}\}/g, fullFilePath);
-      template = template.replace(/\{\{FILE\}\}/g, displayPath);
+      // Replace placeholders with proper escaping for security
+      // FILE_PATH_JSON: JSON-encoded for JavaScript string context
+      template = template.replace(/\{\{FILE_PATH_JSON\}\}/g, JSON.stringify(fullFilePath));
+      // FILE: HTML-escaped for HTML context (title, visible text)
+      template = template.replace(/\{\{FILE\}\}/g, escapeHtml(displayPath));
+      // FORMAT: hardcoded 'stl' or '3mf', no escaping needed
       template = template.replace(/\{\{FORMAT\}\}/g, format3D);
 
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -272,7 +287,7 @@ const server = http.createServer((req, res) => {
 
     try {
       const modelData = fs.readFileSync(fullFilePath);
-      const mimeType = isSTL ? 'model/stl' : 'application/octet-stream';
+      const mimeType = isSTL ? 'model/stl' : 'model/3mf';
       res.writeHead(200, {
         'Content-Type': mimeType,
         'Content-Length': modelData.length,
