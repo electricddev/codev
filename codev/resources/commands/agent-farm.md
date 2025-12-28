@@ -30,6 +30,7 @@ af start [options]
 - `-c, --cmd <command>` - Command to run in architect terminal
 - `-p, --port <port>` - Port for architect terminal
 - `--no-role` - Skip loading architect role prompt
+- `--no-browser` - Skip opening browser after start
 - `-r, --remote <target>` - Start Agent Farm on remote machine (see below)
 - `--allow-insecure-remote` - Bind to 0.0.0.0 for remote access (deprecated)
 
@@ -80,6 +81,8 @@ This single command:
 4. Opens `http://localhost:4200` in your browser
 
 The dashboard and all terminals work identically to local development. Press Ctrl+C to disconnect.
+
+**Limitation**: File annotation tabs (`af open`) use separate ports and won't work through the tunnel. Use terminals for file viewing, or forward additional ports manually.
 
 **Prerequisites:**
 - SSH server must be running on the remote machine

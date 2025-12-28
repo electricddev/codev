@@ -79,6 +79,7 @@ export interface StartOptions {
   cmd?: string;
   port?: number;
   noRole?: boolean;
+  noBrowser?: boolean;  // Skip opening browser after start
   allowInsecureRemote?: boolean;  // Bind to 0.0.0.0 instead of localhost
   remote?: string;  // user@host or user@host:/path for remote access
 }

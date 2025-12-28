@@ -72,7 +72,8 @@ async function startRemote(options: StartOptions): Promise<void> {
   const cdCommand = remotePath
     ? `cd ${remotePath}`
     : `cd ${projectName} 2>/dev/null || cd ~/${projectName} 2>/dev/null`;
-  const remoteCommand = `${cdCommand} && af start --port ${localPort}`;
+  // Always pass --no-browser to remote since we open browser locally
+  const remoteCommand = `${cdCommand} && af start --port ${localPort} --no-browser`;
 
   // Check if local port is already in use
   try {
@@ -124,8 +125,22 @@ async function startRemote(options: StartOptions): Promise<void> {
         logger.kv('Dashboard', `http://localhost:${localPort}`);
         logger.info('Press Ctrl+C to disconnect');
 
-        await openBrowser(`http://localhost:${localPort}`);
+        if (!options.noBrowser) {
+          await openBrowser(`http://localhost:${localPort}`);
+        }
       }, 1000);
+    }
+
+    // Detect common remote errors
+    if (output.includes('command not found: af') || output.includes('af: command not found')) {
+      logger.blank();
+      logger.error('Agent Farm (af) is not installed on the remote machine');
+      logger.info('Install it with: npm install -g @cluesmith/codev');
+    }
+    if (output.includes('not a git repository') || output.includes('fatal: not a git repository')) {
+      logger.blank();
+      logger.error('Remote directory is not a git repository');
+      logger.info('Specify the correct path: af start --remote user@host:/path/to/project');
     }
   });
 
@@ -135,13 +150,23 @@ async function startRemote(options: StartOptions): Promise<void> {
     if (code === 0) {
       logger.info('Remote session ended');
     } else if (code === 255) {
-      logger.error(`Could not connect to ${user}@${host}`);
+      logger.error(`SSH connection failed to ${user}@${host}`);
+      logger.info('');
+      logger.info('Common causes:');
+      logger.info('  • Host unreachable: Check network/firewall and that the host is running');
+      logger.info(`  • SSH keys: Run \`ssh-copy-id ${user}@${host}\` to set up key-based auth`);
+      logger.info(`  • Unknown host: Run \`ssh ${user}@${host}\` once to add to known_hosts`);
+    } else if (code === 127) {
+      logger.error('Command not found on remote machine');
+      logger.info('Ensure Agent Farm is installed: npm install -g @cluesmith/codev');
+    } else if (code === 1) {
+      logger.error('Remote command failed');
       logger.info('Check that:');
-      logger.info('  1. The host is reachable');
-      logger.info('  2. SSH keys are configured');
-      logger.info('  3. Agent Farm is installed on the remote machine');
+      logger.info('  • The project path exists on the remote machine');
+      logger.info('  • You have permission to access the directory');
+      logger.info('  • Agent Farm dependencies (tmux, ttyd) are installed');
     } else {
-      logger.error(`Remote session ended with code ${code}`);
+      logger.error(`Remote session ended with exit code ${code}`);
     }
     process.exit(code || 0);
   });
@@ -305,8 +330,10 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
   logger.success('Agent Farm started!');
   logger.kv('Dashboard', `http://localhost:${dashboardPort}`);
 
-  // Open dashboard in browser
-  await openBrowser(`http://localhost:${dashboardPort}`);
+  // Open dashboard in browser (unless --no-browser)
+  if (!options.noBrowser) {
+    await openBrowser(`http://localhost:${dashboardPort}`);
+  }
 }
 
 /**

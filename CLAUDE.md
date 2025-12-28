@@ -318,6 +318,8 @@ This single command:
 
 The dashboard and all terminals work identically to local development. Press Ctrl+C to disconnect.
 
+**Limitation**: File annotation tabs (`af open`) use separate ports and won't work through the tunnel. Use terminals for file viewing, or forward additional ports if needed.
+
 **Note**: Requires SSH server on the remote machine. On Windows, enable OpenSSH Server or use WSL2.
 
 ### Configuration
