@@ -126,8 +126,12 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Parse URL for robust pathname matching (handles query strings, etc.)
+  const url = new URL(req.url || '/', `http://localhost:${port}`);
+  const pathname = url.pathname;
+
   // Serve 3D viewer for STL and 3MF files
-  if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html') && is3D && viewerTemplatePath3D) {
+  if (req.method === 'GET' && (pathname === '/' || pathname === '/index.html') && is3D && viewerTemplatePath3D) {
     try {
       let template = fs.readFileSync(viewerTemplatePath3D, 'utf-8');
 
@@ -149,7 +153,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Serve annotation viewer for other files
-  if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
+  if (req.method === 'GET' && (pathname === '/' || pathname === '/index.html')) {
     try {
       let template = fs.readFileSync(templatePath, 'utf-8');
 
@@ -201,7 +205,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Handle file reload (GET /file)
-  if (req.method === 'GET' && req.url?.startsWith('/file')) {
+  if (req.method === 'GET' && pathname.startsWith('/file')) {
     try {
       // Re-read file from disk
       const fileContent = fs.readFileSync(fullFilePath, 'utf-8');
@@ -215,8 +219,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Handle image content (GET /api/image)
-  // Use startsWith to allow query params like ?t=123 for cache busting
-  if (req.method === 'GET' && req.url?.startsWith('/api/image')) {
+  if (req.method === 'GET' && pathname.startsWith('/api/image')) {
     if (!isImage) {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
       res.end('Not an image file');
@@ -240,8 +243,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Handle video content (GET /api/video)
-  // Use startsWith to allow query params like ?t=123 for cache busting
-  if (req.method === 'GET' && req.url?.startsWith('/api/video')) {
+  if (req.method === 'GET' && pathname.startsWith('/api/video')) {
     if (!isVideo) {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
       res.end('Not a video file');
@@ -265,7 +267,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Handle file mtime check (GET /api/mtime) - for auto-reload
-  if (req.method === 'GET' && req.url?.startsWith('/api/mtime')) {
+  if (req.method === 'GET' && pathname.startsWith('/api/mtime')) {
     try {
       const stat = fs.statSync(fullFilePath);
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -278,7 +280,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Handle 3D model content (GET /api/model) - supports STL and 3MF
-  if (req.method === 'GET' && req.url?.startsWith('/api/model')) {
+  if (req.method === 'GET' && pathname.startsWith('/api/model')) {
     if (!is3D) {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
       res.end('Not a 3D model file');
@@ -302,7 +304,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Handle legacy STL endpoint (GET /api/stl) - redirects to /api/model
-  if (req.method === 'GET' && req.url?.startsWith('/api/stl')) {
+  if (req.method === 'GET' && pathname.startsWith('/api/stl')) {
     if (!isSTL) {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
       res.end('Not an STL file');
@@ -325,7 +327,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Handle file save
-  if (req.method === 'POST' && req.url === '/save') {
+  if (req.method === 'POST' && pathname === '/save') {
     let body = '';
     req.on('data', (chunk: Buffer) => body += chunk.toString());
     req.on('end', () => {
