@@ -92,6 +92,45 @@ When asked about project status, incomplete work, or what to work on next:
 
 AI agents must stop at `conceived` after writing a spec, and stop at `committed` after merging.
 
+## Agent Responsiveness
+
+**Responsiveness is paramount.** The user should never wait for you. Use `run_in_background: true` for any operation that takes more than ~5 seconds.
+
+### Default to Background Execution
+
+| Task Type | Expected Duration | Action |
+|-----------|------------------|--------|
+| Running tests | 10-300s | `run_in_background: true` |
+| Consultations (consult) | 60-250s | `run_in_background: true` |
+| E2E test suites | 60-600s | `run_in_background: true` |
+| npm install/build | 5-60s | `run_in_background: true` |
+| Quick file reads/edits | <5s | Run normally |
+
+### How to Use Background Tasks
+
+```typescript
+// In Bash tool call:
+{
+  "command": "npm test",
+  "run_in_background": true  // REQUIRED for long tasks
+}
+```
+
+**Critical**: Using `&` at the end of the command does NOT work - you MUST set the `run_in_background` parameter.
+
+### Workflow
+
+1. **Start long task in background** → Get task ID
+2. **Continue interacting** with the user immediately
+3. **Check results later** with `TaskOutput` when needed
+
+### Never Block the User
+
+❌ **Wrong**: Running 3-minute test suite while user waits
+✅ **Right**: Starting test suite in background, continuing to answer questions
+
+The user's time is valuable. Stay responsive.
+
 ## Protocol Selection Guide
 
 ### Use TICK for (amendments to existing specs):

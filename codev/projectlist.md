@@ -208,8 +208,8 @@ Projects currently in development (conceived through committed), sorted by prior
   - id: "0023"
     title: "Consult Tool (Stateful)"
     summary: "Add stateful session support to consult tool via stdio communication with persistent CLI processes"
-    status: conceived
-    priority: medium
+    status: on_hold
+    priority: low
     release: null
     files:
       spec: null
@@ -225,7 +225,7 @@ Projects currently in development (conceived through committed), sorted by prior
       implemented_at: null
       committed_at: null
       integrated_at: null
-    notes: "Phase 2: Stateful. Keep CLI running via stdio. Maintain session until closed. Depends on 0022."
+    notes: "ON HOLD: Benefits unclear - stateless consult already works well. May revisit if use case becomes clearer."
 
 
 

@@ -31,7 +31,7 @@ function getTerminalUrl(tab) {
 
   // File/annotation tabs - use the annotation ID for proxy routing
   if (tab.type === 'file' && tab.annotationId) {
-    return `/annotation/${tab.annotationId}`;
+    return `/annotation/${tab.annotationId}/`;
   }
 
   // Fallback for backward compatibility
