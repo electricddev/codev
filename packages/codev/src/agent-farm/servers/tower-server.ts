@@ -14,6 +14,7 @@ import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { getGlobalDb } from '../db/index.js';
+import { cleanupStaleEntries } from '../utils/port-registry.js';
 import { escapeHtml, parseJsonBody, isRequestAllowed } from '../utils/server-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -247,6 +248,9 @@ async function getDirectorySuggestions(inputPath: string): Promise<{ path: strin
  * Auto-adopts non-codev directories
  */
 async function launchInstance(projectPath: string): Promise<{ success: boolean; error?: string; adopted?: boolean }> {
+  // Clean up stale port allocations before launching (handles machine restarts)
+  cleanupStaleEntries();
+
   // Validate path exists
   if (!fs.existsSync(projectPath)) {
     return { success: false, error: `Path does not exist: ${projectPath}` };

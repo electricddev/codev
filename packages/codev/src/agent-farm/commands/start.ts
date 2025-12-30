@@ -16,7 +16,7 @@ import { spawnDetached, commandExists, findAvailablePort, openBrowser, run, spaw
 import { checkCoreDependencies } from '../utils/deps.js';
 import { loadState, setArchitect } from '../state.js';
 import { handleOrphanedSessions, warnAboutStaleArtifacts } from '../utils/orphan-handler.js';
-import { getPortBlock } from '../utils/port-registry.js';
+import { getPortBlock, cleanupStaleEntries } from '../utils/port-registry.js';
 import { loadRolePrompt } from '../utils/roles.js';
 
 /**
@@ -228,6 +228,9 @@ async function startRemote(options: StartOptions): Promise<void> {
   const config = getConfig();
   const { user, host, remotePath } = parseRemote(options.remote!);
 
+  // Clean up stale port allocations (handles machine restarts, killed processes)
+  cleanupStaleEntries();
+
   // Determine local port - use specified, or get from port registry
   let localPort: number;
   if (options.port) {
@@ -393,6 +396,9 @@ export async function start(options: StartOptions = {}): Promise<void> {
   }
 
   const config = getConfig();
+
+  // Clean up stale port allocations (handles machine restarts, killed processes)
+  cleanupStaleEntries();
 
   // Check for and clean up orphaned tmux sessions
   await handleOrphanedSessions({ kill: true });
