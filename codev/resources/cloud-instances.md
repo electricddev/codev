@@ -2,40 +2,38 @@
 
 Guide for running codev on cloud VMs while traveling without reliable internet.
 
-## Current Instance: GCP codev-dev
+## Example Instance: GCP e2-standard-4
 
-**Active instance provisioned 2024-12-30:**
+Example configuration for a GCP dev instance:
 
 | Property | Value |
 |----------|-------|
 | Name | `codev-dev` |
 | Zone | `us-west1-b` |
-| External IP | `34.83.254.220` |
 | Machine Type | `e2-standard-4` (4 vCPU, 16GB RAM) |
 | Boot Disk | 50GB SSD |
 | OS | Ubuntu 22.04 LTS |
-| Project | `active-complex-556` |
 
 ### Installed Tools
 
-- Node.js v20.19.6
-- npm 10.8.2
-- Claude Code 2.0.76
-- Codex CLI 0.77.0
-- tmux 3.2a
-- git 2.34.1
+- Node.js v20.x
+- npm 10.x
+- Claude Code
+- Codex CLI
+- tmux
+- git
 
 ### Quick Start
 
 ```bash
 # Connect from your laptop
-gcloud compute ssh codev-dev --zone=us-west1-b
+gcloud compute ssh <instance-name> --zone=us-west1-b
 
 # Or use af for Agent Farm
-af start --remote waleedk_gmail_com@34.83.254.220:/home/waleedk_gmail_com/dev/your-project
+af start --remote <username>@<external-ip>:/home/<username>/dev/your-project
 
 # Set API keys (first time only)
-gcloud compute ssh codev-dev --zone=us-west1-b --command='
+gcloud compute ssh <instance-name> --zone=us-west1-b --command='
 cat >> ~/.bashrc << "EOF"
 export ANTHROPIC_API_KEY="sk-ant-..."
 export OPENAI_API_KEY="sk-..."
@@ -48,19 +46,19 @@ source ~/.bashrc
 
 ```bash
 # Check status
-gcloud compute instances describe codev-dev --zone=us-west1-b --format="table(status,networkInterfaces[0].accessConfigs[0].natIP)"
+gcloud compute instances describe <instance-name> --zone=us-west1-b --format="table(status,networkInterfaces[0].accessConfigs[0].natIP)"
 
 # Stop (saves money, keeps disk)
-gcloud compute instances stop codev-dev --zone=us-west1-b
+gcloud compute instances stop <instance-name> --zone=us-west1-b
 
 # Start
-gcloud compute instances start codev-dev --zone=us-west1-b
+gcloud compute instances start <instance-name> --zone=us-west1-b
 
 # Delete (removes everything)
-gcloud compute instances delete codev-dev --zone=us-west1-b
+gcloud compute instances delete <instance-name> --zone=us-west1-b
 
 # Create snapshot before deleting
-gcloud compute disks snapshot codev-dev --zone=us-west1-b --snapshot-names=codev-dev-snapshot
+gcloud compute disks snapshot <instance-name> --zone=us-west1-b --snapshot-names=<instance-name>-snapshot
 ```
 
 ### Estimated Cost
@@ -222,7 +220,7 @@ export GEMINI_API_KEY="..."
 
 | Provider | Config | Monthly Cost | US West? | Notes |
 |----------|--------|--------------|----------|-------|
-| **GCP e2-standard-4** | 4 vCPU, 16GB | ~$100 (24/7) / ~$35 (8h/day) | Yes | **Current instance** |
+| GCP e2-standard-4 | 4 vCPU, 16GB | ~$100 (24/7) / ~$35 (8h/day) | Yes | Recommended for US |
 | Hetzner CX33 | 4 vCPU, 8GB | ~$7 | No | Best value |
 | Hetzner CPX31 | 4 vCPU, 8GB | ~$17 | No | Dedicated CPU |
 | DigitalOcean | 2 vCPU, 4GB | $24 | Yes | Simple |
