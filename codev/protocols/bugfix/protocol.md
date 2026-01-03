@@ -201,16 +201,23 @@ git commit -m "[Bugfix #N] Test: Add regression test"
 
 ### Phase 6: Integration Review (Architect)
 
+**MANDATORY CHECKLIST** (do not approve until all checked):
+- [ ] CMAP 3-way review completed (Gemini, Codex, Claude)
+- [ ] All REQUEST_CHANGES from CMAP addressed
+- [ ] PR has only the intended changes (no stale commits)
+- [ ] Tests pass
+
 **Architect Actions**:
 1. Review the PR: `gh pr view <M>`
 
-2. Run 3-way CMAP integration review:
+2. Run 3-way CMAP integration review (**NON-NEGOTIABLE**):
    ```bash
    consult --model gemini --type integration-review pr <M> &
    consult --model codex --type integration-review pr <M> &
    consult --model claude --type integration-review pr <M> &
    wait
    ```
+   **DO NOT SKIP THIS STEP.** Manual review is not a substitute for CMAP.
 
 3. If changes needed, post feedback as PR comment:
    ```bash
