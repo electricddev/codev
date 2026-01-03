@@ -257,27 +257,6 @@ Projects currently in development (conceived through committed), sorted by prior
       integrated_at: null
     notes: "Annotation tabs lose state when switching tabs. Need iframe caching with LRU eviction."
 
-  - id: "0065"
-    title: "BUGFIX Protocol and CLI Support"
-    summary: "Lightweight protocol for minor bugfixes with af spawn --issue support"
-    status: integrated
-    priority: high
-    release: v1.6.0
-    files:
-      spec: codev/specs/0065-bugfix-protocol.md
-      plan: codev/plans/0065-bugfix-protocol.md
-      review: null
-    dependencies: []
-    tags: [protocol, cli, agent-farm]
-    timestamps:
-      conceived_at: "2026-01-03T10:00:00-08:00"
-      specified_at: "2026-01-03T10:00:00-08:00"
-      planned_at: "2026-01-03T11:00:00-08:00"
-      implementing_at: "2026-01-03T12:00:00-08:00"
-      implemented_at: "2026-01-03T14:00:00-08:00"
-      committed_at: "2026-01-04T00:00:00-08:00"
-      integrated_at: "2026-01-04T09:00:00-08:00"
-    notes: "BUGFIX protocol for GitHub issues + af spawn --issue CLI support. CMAP reviewed: 2 APPROVE, 1 COMMENT. Key feature for v1.6.0."
 
 
 
@@ -348,6 +327,32 @@ releases:
     status: released
     target_date: null
     notes: "Initial release establishing core infrastructure: test framework, architect-builder pattern, TypeScript CLI, and dashboard"
+```
+
+### v1.6.0 (planning)
+
+```yaml
+  - id: "0065"
+    title: "BUGFIX Protocol and CLI Support"
+    summary: "Lightweight protocol for minor bugfixes with af spawn --issue support"
+    status: integrated
+    priority: high
+    release: v1.6.0
+    files:
+      spec: codev/specs/0065-bugfix-protocol.md
+      plan: codev/plans/0065-bugfix-protocol.md
+      review: null
+    dependencies: []
+    tags: [protocol, cli, agent-farm]
+    timestamps:
+      conceived_at: "2026-01-03T10:00:00-08:00"
+      specified_at: "2026-01-03T10:00:00-08:00"
+      planned_at: "2026-01-03T11:00:00-08:00"
+      implementing_at: "2026-01-03T12:00:00-08:00"
+      implemented_at: "2026-01-03T14:00:00-08:00"
+      committed_at: "2026-01-04T00:00:00-08:00"
+      integrated_at: "2026-01-04T09:00:00-08:00"
+    notes: "BUGFIX protocol for GitHub issues + af spawn --issue CLI support. CMAP reviewed: 2 APPROVE, 1 COMMENT. Key feature for v1.6.0."
 ```
 
 ### v1.0.0 (active)
