@@ -1857,6 +1857,27 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+      // Additional security: validate parent directories don't symlink outside project
+      // Find the deepest existing parent and ensure it's within project
+      let checkDir = path.dirname(fullPath);
+      while (checkDir !== projectRoot && !fs.existsSync(checkDir)) {
+        checkDir = path.dirname(checkDir);
+      }
+      if (fs.existsSync(checkDir) && checkDir !== projectRoot) {
+        try {
+          const realParent = fs.realpathSync(checkDir);
+          if (!realParent.startsWith(projectRoot + path.sep) && realParent !== projectRoot) {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Path must be within project directory' }));
+            return;
+          }
+        } catch {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Cannot resolve path' }));
+          return;
+        }
+      }
+
       try {
         // Create parent directories if they don't exist
         const parentDir = path.dirname(fullPath);

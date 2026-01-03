@@ -269,3 +269,8 @@ DASHBOARD_DIR="node_modules/@cluesmith/codev/templates/dashboard"
   run grep -q "recursive.*true" node_modules/@cluesmith/codev/dist/agent-farm/servers/dashboard-server.js
   assert_success
 }
+
+@test "create file API validates parent symlinks" {
+  run grep -q "realpathSync" node_modules/@cluesmith/codev/dist/agent-farm/servers/dashboard-server.js
+  assert_success
+}
