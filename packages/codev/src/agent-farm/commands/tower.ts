@@ -3,15 +3,25 @@
  */
 
 import { resolve } from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, appendFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import net from 'node:net';
+import http from 'node:http';
 import { logger, fatal } from '../utils/logger.js';
 import { spawnDetached, openBrowser } from '../utils/shell.js';
 import { getConfig } from '../utils/config.js';
 import { execSync } from 'node:child_process';
 
+// Log file location
+const LOG_DIR = resolve(homedir(), '.agent-farm');
+const LOG_FILE = resolve(LOG_DIR, 'tower.log');
+
 // Default port for tower dashboard
 const DEFAULT_TOWER_PORT = 4100;
+
+// Startup verification settings
+const STARTUP_TIMEOUT_MS = 5000;
+const STARTUP_CHECK_INTERVAL_MS = 200;
 
 export interface TowerStartOptions {
   port?: number;
@@ -19,6 +29,19 @@ export interface TowerStartOptions {
 
 export interface TowerStopOptions {
   port?: number;
+}
+
+/**
+ * Write to the tower log file
+ */
+function logToFile(message: string): void {
+  try {
+    mkdirSync(LOG_DIR, { recursive: true });
+    const timestamp = new Date().toISOString();
+    appendFileSync(LOG_FILE, `[${timestamp}] ${message}\n`);
+  } catch {
+    // Ignore logging errors
+  }
 }
 
 /**
@@ -39,6 +62,48 @@ async function isPortInUse(port: number): Promise<boolean> {
     });
     server.listen(port, '127.0.0.1');
   });
+}
+
+/**
+ * Check if the tower server is actually responding
+ */
+async function isServerResponding(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const req = http.request(
+      {
+        hostname: '127.0.0.1',
+        port,
+        path: '/api/status',
+        method: 'GET',
+        timeout: 2000,
+      },
+      (res) => {
+        resolve(res.statusCode === 200);
+      }
+    );
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(false);
+    });
+    req.end();
+  });
+}
+
+/**
+ * Wait for the server to start responding
+ */
+async function waitForServer(port: number): Promise<boolean> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < STARTUP_TIMEOUT_MS) {
+    if (await isServerResponding(port)) {
+      return true;
+    }
+    await new Promise((r) => setTimeout(r, STARTUP_CHECK_INTERVAL_MS));
+  }
+
+  return false;
 }
 
 /**
@@ -63,12 +128,29 @@ function getProcessesOnPort(port: number): number[] {
 export async function towerStart(options: TowerStartOptions = {}): Promise<void> {
   const port = options.port || DEFAULT_TOWER_PORT;
 
-  // Check if already running
-  if (await isPortInUse(port)) {
+  // Check if already running and responding
+  if (await isServerResponding(port)) {
     const dashboardUrl = `http://localhost:${port}`;
     logger.info(`Tower already running at ${dashboardUrl}`);
     await openBrowser(dashboardUrl);
     return;
+  }
+
+  // Check if port is in use but not responding (zombie process?)
+  if (await isPortInUse(port)) {
+    logger.warn(`Port ${port} is in use but tower not responding. Attempting cleanup...`);
+    logToFile(`Port ${port} in use but not responding, attempting cleanup`);
+    const pids = getProcessesOnPort(port);
+    for (const pid of pids) {
+      try {
+        process.kill(pid, 'SIGTERM');
+        logToFile(`Killed process ${pid} on port ${port}`);
+      } catch {
+        // Process may have already exited
+      }
+    }
+    // Wait for port to be released
+    await new Promise((r) => setTimeout(r, 1000));
   }
 
   const config = getConfig();
@@ -83,17 +165,21 @@ export async function towerStart(options: TowerStartOptions = {}): Promise<void>
   if (existsSync(tsScript)) {
     // Dev mode: run with tsx
     command = 'npx';
-    args = ['tsx', tsScript, String(port)];
+    args = ['tsx', tsScript, String(port), '--log-file', LOG_FILE];
   } else if (existsSync(jsScript)) {
     // Prod mode: run compiled JS
     command = 'node';
-    args = [jsScript, String(port)];
+    args = [jsScript, String(port), '--log-file', LOG_FILE];
   } else {
     fatal('Tower server not found');
   }
 
   logger.header('Starting Tower');
   logger.kv('Port', port);
+  logger.kv('Log file', LOG_FILE);
+
+  logToFile(`Starting tower server on port ${port}`);
+  logToFile(`Command: ${command} ${args.join(' ')}`);
 
   // Start tower server
   const serverProcess = spawnDetached(command, args, {
@@ -101,14 +187,26 @@ export async function towerStart(options: TowerStartOptions = {}): Promise<void>
   });
 
   if (!serverProcess.pid) {
+    logToFile('Failed to spawn tower server process');
     fatal('Failed to start tower server');
   }
 
-  // Wait a moment for server to start
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  logToFile(`Spawned tower server with PID ${serverProcess.pid}`);
+
+  // Wait for server to actually start responding
+  logger.info('Waiting for server to start...');
+  const started = await waitForServer(port);
+
+  if (!started) {
+    logToFile(`Tower server failed to respond within ${STARTUP_TIMEOUT_MS}ms`);
+    logger.error(`Tower server failed to start within ${STARTUP_TIMEOUT_MS / 1000}s`);
+    logger.error(`Check logs at: ${LOG_FILE}`);
+    process.exit(1);
+  }
 
   const dashboardUrl = `http://localhost:${port}`;
 
+  logToFile(`Tower server started successfully at ${dashboardUrl}`);
   logger.blank();
   logger.success('Tower started!');
   logger.kv('Dashboard', dashboardUrl);

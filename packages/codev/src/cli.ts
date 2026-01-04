@@ -80,17 +80,36 @@ program
     }
   });
 
-// Tower command
-program
+// Tower command with subcommands
+const towerCmd = program
   .command('tower')
-  .description('Cross-project dashboard showing all agent-farm instances')
+  .description('Cross-project dashboard showing all agent-farm instances');
+
+towerCmd
+  .command('start')
+  .description('Start the tower dashboard')
   .option('-p, --port <port>', 'Port to run on (default: 4100)')
-  .option('--stop', 'Stop the tower dashboard')
   .action(async (options) => {
     try {
       await tower({
         port: options.port ? parseInt(options.port, 10) : undefined,
-        stop: options.stop,
+        stop: false,
+      });
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+towerCmd
+  .command('stop')
+  .description('Stop the tower dashboard')
+  .option('-p, --port <port>', 'Port to stop (default: 4100)')
+  .action(async (options) => {
+    try {
+      await tower({
+        port: options.port ? parseInt(options.port, 10) : undefined,
+        stop: true,
       });
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));

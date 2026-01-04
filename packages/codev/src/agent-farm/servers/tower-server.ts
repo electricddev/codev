@@ -29,17 +29,43 @@ const program = new Command()
   .description('Tower dashboard for Agent Farm - centralized view of all instances')
   .argument('[port]', 'Port to listen on', String(DEFAULT_PORT))
   .option('-p, --port <port>', 'Port to listen on (overrides positional argument)')
+  .option('-l, --log-file <path>', 'Log file path for server output')
   .parse(process.argv);
 
 const opts = program.opts();
 const args = program.args;
 const portArg = opts.port || args[0] || String(DEFAULT_PORT);
 const port = parseInt(portArg, 10);
+const logFilePath = opts.logFile;
+
+// Logging utility
+function log(level: 'INFO' | 'ERROR' | 'WARN', message: string): void {
+  const timestamp = new Date().toISOString();
+  const logLine = `[${timestamp}] [${level}] ${message}`;
+
+  // Always log to console
+  if (level === 'ERROR') {
+    console.error(logLine);
+  } else {
+    console.log(logLine);
+  }
+
+  // Also log to file if configured
+  if (logFilePath) {
+    try {
+      fs.appendFileSync(logFilePath, logLine + '\n');
+    } catch {
+      // Ignore file write errors
+    }
+  }
+}
 
 if (isNaN(port) || port < 1 || port > 65535) {
-  console.error(`Error: Invalid port "${portArg}". Must be a number between 1 and 65535.`);
+  log('ERROR', `Invalid port "${portArg}". Must be a number between 1 and 65535.`);
   process.exit(1);
 }
+
+log('INFO', `Tower server starting on port ${port}`);
 
 // Interface for port registry entries (from SQLite)
 interface PortAllocation {
@@ -76,7 +102,7 @@ function loadPortAllocations(): PortAllocation[] {
     const db = getGlobalDb();
     return db.prepare('SELECT * FROM port_allocations ORDER BY last_used_at DESC').all() as PortAllocation[];
   } catch (err) {
-    console.error('Error loading port allocations:', (err as Error).message);
+    log('ERROR', `Error loading port allocations: ${(err as Error).message}`);
     return [];
   }
 }
@@ -274,7 +300,7 @@ async function launchInstance(projectPath: string): Promise<{ success: boolean; 
         timeout: 30000,
       });
       adopted = true;
-      console.log(`Auto-adopted codev in: ${projectPath}`);
+      log('INFO', `Auto-adopted codev in: ${projectPath}`);
     } catch (err) {
       return { success: false, error: `Failed to adopt codev: ${(err as Error).message}` };
     }
@@ -606,7 +632,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not found');
   } catch (err) {
-    console.error('Request error:', err);
+    log('ERROR', `Request error: ${(err as Error).message}`);
     res.writeHead(500, { 'Content-Type': 'text/plain' });
     res.end('Internal server error: ' + (err as Error).message);
   }
@@ -614,5 +640,15 @@ const server = http.createServer(async (req, res) => {
 
 // SECURITY: Bind to localhost only to prevent network exposure
 server.listen(port, '127.0.0.1', () => {
-  console.log(`Tower: http://localhost:${port}`);
+  log('INFO', `Tower server listening at http://localhost:${port}`);
+});
+
+// Handle uncaught errors
+process.on('uncaughtException', (err) => {
+  log('ERROR', `Uncaught exception: ${err.message}\n${err.stack}`);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  log('ERROR', `Unhandled rejection: ${reason}`);
 });
