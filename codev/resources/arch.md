@@ -987,8 +987,34 @@ codev/                                  # Project root (git repository)
 - Architecture documentation updated automatically at review
 
 **Selection Criteria**:
-- Use TICK for: Bug fixes, simple features, utilities, configuration
+- Use TICK for: Simple features, utilities, configuration, amendments to existing specs
 - Use SPIDER for: Complex features, architecture changes, unclear requirements
+- Use BUGFIX for: Minor bugs reported as GitHub Issues (< 300 LOC)
+
+#### BUGFIX Protocol (`codev/protocols/bugfix/`)
+**Purpose**: Lightweight protocol for minor bugfixes using GitHub Issues
+
+**Workflow**:
+1. **Identify** - Architect identifies issue #N
+2. **Spawn** - `af spawn --issue N` creates worktree and notifies issue
+3. **Fix** - Builder investigates, fixes, writes regression test
+4. **Review** - Builder runs CMAP, creates PR
+5. **Merge** - Architect reviews, builder merges
+6. **Cleanup** - `af cleanup --issue N` removes worktree
+
+**Key Features**:
+- No spec/plan documents required
+- Issue is the source of truth (not projectlist.md)
+- CMAP review at PR stage only (lighter than SPIDER)
+- Branch naming: `builder/bugfix-<N>-<slug>`
+- Worktree: `.builders/bugfix-<N>/`
+
+**Selection Criteria**:
+- Use BUGFIX for: Clear bugs, isolated to single module, < 300 LOC fix
+- Escalate to SPIDER when: Architectural changes needed, > 300 LOC, multiple stakeholders
+
+**Files**:
+- `protocol.md` - Complete protocol specification
 
 ### 2. Protocol Import
 
@@ -1047,9 +1073,12 @@ af stop                       # Stop all agent-farm processes
 # Managing builders
 af spawn --project 0003       # Spawn a builder for spec 0003
 af spawn -p 0003              # Short form
+af spawn --issue 42           # Spawn a builder for GitHub issue #42 (BUGFIX protocol)
+af spawn -i 42                # Short form for --issue
 af status                     # Check all agent status
 af cleanup --project 0003     # Clean up builder (checks for uncommitted work)
 af cleanup -p 0003 --force    # Force cleanup (lose uncommitted work)
+af cleanup --issue 42         # Clean up bugfix builder and remote branch
 
 # Utilities
 af util                       # Open a utility shell terminal
@@ -1938,6 +1967,12 @@ A well-maintained Codev architecture should enable:
 
 See [CHANGELOG.md](../../CHANGELOG.md) for detailed version history including:
 
+**v1.6.0 (Gothic)**:
+- BUGFIX protocol for GitHub Issue-based bugfixes (Spec 0065)
+- CLI: `af spawn --issue N`, `af cleanup --issue N`
+- Tower subcommands with improved logging
+- Tutorial system scaffolded (Spec 0006 preparation)
+
 **v1.5.x (Florence)**:
 - Dashboard modularization with hot reload (Spec 0060)
 - Daily activity summary (Spec 0059)
@@ -1965,7 +2000,7 @@ See [CHANGELOG.md](../../CHANGELOG.md) for detailed version history including:
 
 ---
 
-**Last Updated**: 2025-12-28 (Maintenance Run 0004)
-**Version**: Post-v1.5.8-Florence
-**Changes**: Updated Dashboard UI section for modularization, added new API endpoints, templates, CLI commands, and v1.5.x feature list
-**Next Review**: After next significant feature implementation
+**Last Updated**: 2026-01-07 (Maintenance Run 0005)
+**Version**: Pre-v1.6.0-Gothic
+**Changes**: Added BUGFIX protocol documentation, updated CLI commands for --issue flag, added v1.6.0 features
+**Next Review**: After v1.6.0 release
