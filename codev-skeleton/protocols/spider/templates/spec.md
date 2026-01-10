@@ -1,5 +1,18 @@
 # Specification: [Title]
 
+<!--
+SPEC vs PLAN BOUNDARY:
+This spec defines WHAT and WHY. The plan defines HOW and WHEN.
+
+DO NOT include in this spec:
+- Implementation phases or steps
+- File paths to modify
+- Code examples or pseudocode
+- "First we will... then we will..."
+
+These belong in codev/plans/XXXX-*.md
+-->
+
 ## Metadata
 - **ID**: spec-[YYYY-MM-DD]-[short-name]
 - **Status**: draft
