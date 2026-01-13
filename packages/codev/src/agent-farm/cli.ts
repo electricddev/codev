@@ -91,8 +91,10 @@ export async function runAgentFarm(args: string[]): Promise<void> {
     .option('-l, --layout', 'Create multi-pane layout with status and shell')
     .action(async (args: string[], options: { layout?: boolean }) => {
       const { architect } = await import('./commands/architect.js');
+      const commands = getResolvedCommands();
+
       try {
-        await architect({ args, layout: options.layout });
+        await architect({ args, layout: options.layout, cmd: commands.architect });
       } catch (error) {
         logger.error(error instanceof Error ? error.message : String(error));
         process.exit(1);

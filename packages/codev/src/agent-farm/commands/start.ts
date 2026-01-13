@@ -2,22 +2,35 @@
  * Start command - launches the architect dashboard
  */
 
-import { resolve, basename, join } from 'node:path';
-import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { randomUUID } from 'node:crypto';
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import * as net from 'node:net';
-import type { StartOptions, ArchitectState } from '../types.js';
-import { version as localVersion } from '../../version.js';
-import { getConfig, ensureDirectories } from '../utils/index.js';
-import { logger, fatal } from '../utils/logger.js';
-import { spawnDetached, commandExists, findAvailablePort, openBrowser, run, spawnTtyd, isProcessRunning } from '../utils/shell.js';
-import { checkCoreDependencies } from '../utils/deps.js';
-import { loadState, setArchitect } from '../state.js';
-import { handleOrphanedSessions, warnAboutStaleArtifacts } from '../utils/orphan-handler.js';
-import { getPortBlock, cleanupStaleEntries } from '../utils/port-registry.js';
-import { loadRolePrompt } from '../utils/roles.js';
+import { resolve, basename, join } from "node:path";
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import * as net from "node:net";
+import type { StartOptions, ArchitectState } from "../types.js";
+import { version as localVersion } from "../../version.js";
+import { getConfig, ensureDirectories } from "../utils/index.js";
+import { logger, fatal } from "../utils/logger.js";
+import {
+  spawnDetached,
+  commandExists,
+  findAvailablePort,
+  openBrowser,
+  run,
+  spawnTtyd,
+  isProcessRunning,
+} from "../utils/shell.js";
+import { checkCoreDependencies } from "../utils/deps.js";
+import { loadState, setArchitect } from "../state.js";
+import {
+  handleOrphanedSessions,
+  warnAboutStaleArtifacts,
+} from "../utils/orphan-handler.js";
+import { getPortBlock, cleanupStaleEntries } from "../utils/port-registry.js";
+import { loadRolePrompt } from "../utils/roles.js";
+import { writeLaunchScript } from "../utils/launch-script.js";
+import { buildPromptCommand } from "../../lib/prompt-command.js";
 
 /**
  * Format current date/time as YYYY-MM-DD HH:MM
@@ -25,10 +38,10 @@ import { loadRolePrompt } from '../utils/roles.js';
 function formatDateTime(): string {
   const now = new Date();
   const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
@@ -55,7 +68,9 @@ function renameClaudeSession(sessionName: string, displayName: string): void {
       await run(`tmux send-keys -t "${sessionName}" Enter`);
 
       // Clean up temp file
-      try { unlinkSync(tempFile); } catch {}
+      try {
+        unlinkSync(tempFile);
+      } catch {}
     } catch {
       // Non-fatal - session naming is a nice-to-have
     }
@@ -78,15 +93,15 @@ interface ParsedRemote {
 export function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const server = net.createServer();
-    server.once('error', () => {
+    server.once("error", () => {
       resolve(false);
     });
-    server.once('listening', () => {
+    server.once("listening", () => {
       server.close(() => {
         resolve(true);
       });
     });
-    server.listen(port, '127.0.0.1');
+    server.listen(port, "127.0.0.1");
   });
 }
 
@@ -97,10 +112,12 @@ export function parseRemote(remote: string): ParsedRemote {
   // Match: user@host or user@host:/path
   const match = remote.match(/^([^@]+)@([^:]+)(?::(.+))?$/);
   if (!match) {
-    throw new Error(`Invalid remote format: ${remote}. Use user@host or user@host:/path`);
+    throw new Error(
+      `Invalid remote format: ${remote}. Use user@host or user@host:/path`
+    );
   }
   // Strip trailing slash to avoid duplicate port allocations (e.g., /path/ vs /path)
-  const remotePath = match[3]?.replace(/\/$/, '');
+  const remotePath = match[3]?.replace(/\/$/, "");
   return { user: match[1], host: match[2], remotePath };
 }
 
@@ -110,25 +127,35 @@ export function parseRemote(remote: string): ParsedRemote {
  * Check if passwordless SSH is configured for a host
  * Returns true if SSH works without password, false otherwise
  */
-async function checkPasswordlessSSH(user: string, host: string): Promise<{ ok: boolean; error?: string }> {
+async function checkPasswordlessSSH(
+  user: string,
+  host: string
+): Promise<{ ok: boolean; error?: string }> {
   return new Promise((resolve) => {
-    const ssh = spawn('ssh', [
-      '-o', 'ConnectTimeout=10',
-      '-o', 'BatchMode=yes',  // Fail immediately if password required
-      '-o', 'StrictHostKeyChecking=accept-new',
-      `${user}@${host}`,
-      'true',  // Just run 'true' to test connection
-    ], {
-      stdio: ['ignore', 'ignore', 'pipe'],
-    });
+    const ssh = spawn(
+      "ssh",
+      [
+        "-o",
+        "ConnectTimeout=10",
+        "-o",
+        "BatchMode=yes", // Fail immediately if password required
+        "-o",
+        "StrictHostKeyChecking=accept-new",
+        `${user}@${host}`,
+        "true", // Just run 'true' to test connection
+      ],
+      {
+        stdio: ["ignore", "ignore", "pipe"],
+      }
+    );
 
-    let stderr = '';
-    ssh.stderr?.on('data', (data: Buffer) => {
+    let stderr = "";
+    ssh.stderr?.on("data", (data: Buffer) => {
       stderr += data.toString();
     });
 
-    ssh.on('error', (err) => resolve({ ok: false, error: err.message }));
-    ssh.on('exit', (code) => {
+    ssh.on("error", (err) => resolve({ ok: false, error: err.message }));
+    ssh.on("exit", (code) => {
       if (code === 0) {
         resolve({ ok: true });
       } else {
@@ -139,7 +166,7 @@ async function checkPasswordlessSSH(user: string, host: string): Promise<{ ok: b
     // Timeout after 15 seconds
     setTimeout(() => {
       ssh.kill();
-      resolve({ ok: false, error: 'connection timeout' });
+      resolve({ ok: false, error: "connection timeout" });
     }, 15000);
   });
 }
@@ -148,32 +175,40 @@ async function checkPasswordlessSSH(user: string, host: string): Promise<{ ok: b
  * Check remote CLI versions and warn about mismatches
  */
 async function checkRemoteVersions(user: string, host: string): Promise<void> {
-  const commands = ['codev', 'af', 'consult', 'generate-image'];
-  const versionCmd = commands.map(cmd => `${cmd} --version 2>/dev/null || echo "${cmd}: not found"`).join(' && echo "---" && ');
+  const commands = ["codev", "af", "consult", "generate-image"];
+  const versionCmd = commands
+    .map((cmd) => `${cmd} --version 2>/dev/null || echo "${cmd}: not found"`)
+    .join(' && echo "---" && ');
   // Wrap in bash -l to source login environment (gets PATH from .profile)
   const wrappedCmd = `bash -l -c '${versionCmd.replace(/'/g, "'\\''")}'`;
 
   return new Promise((resolve) => {
-    const ssh = spawn('ssh', [
-      '-o', 'ConnectTimeout=5',
-      '-o', 'BatchMode=yes',
-      `${user}@${host}`,
-      wrappedCmd,
-    ], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    const ssh = spawn(
+      "ssh",
+      [
+        "-o",
+        "ConnectTimeout=5",
+        "-o",
+        "BatchMode=yes",
+        `${user}@${host}`,
+        wrappedCmd,
+      ],
+      {
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    );
 
-    let stdout = '';
-    ssh.stdout?.on('data', (data: Buffer) => {
+    let stdout = "";
+    ssh.stdout?.on("data", (data: Buffer) => {
       stdout += data.toString();
     });
 
-    ssh.on('error', () => {
+    ssh.on("error", () => {
       // SSH failed, skip version check
       resolve();
     });
 
-    ssh.on('exit', (code) => {
+    ssh.on("exit", (code) => {
       if (code !== 0) {
         // SSH failed or commands failed, skip version check
         resolve();
@@ -181,14 +216,14 @@ async function checkRemoteVersions(user: string, host: string): Promise<void> {
       }
 
       // Parse output: each command's version separated by "---"
-      const outputs = stdout.split('---').map(s => s.trim());
+      const outputs = stdout.split("---").map((s) => s.trim());
       const mismatches: string[] = [];
 
       for (let i = 0; i < commands.length && i < outputs.length; i++) {
         const output = outputs[i];
         const cmd = commands[i];
 
-        if (output.includes('not found')) {
+        if (output.includes("not found")) {
           mismatches.push(`${cmd}: not installed on remote`);
         } else {
           // Extract version number (e.g., "1.5.3" from "@cluesmith/codev@1.5.3" or "1.5.3")
@@ -196,7 +231,9 @@ async function checkRemoteVersions(user: string, host: string): Promise<void> {
           if (versionMatch) {
             const remoteVer = versionMatch[1];
             if (remoteVer !== localVersion) {
-              mismatches.push(`${cmd}: local ${localVersion}, remote ${remoteVer}`);
+              mismatches.push(
+                `${cmd}: local ${localVersion}, remote ${remoteVer}`
+              );
             }
           }
         }
@@ -204,11 +241,11 @@ async function checkRemoteVersions(user: string, host: string): Promise<void> {
 
       if (mismatches.length > 0) {
         logger.blank();
-        logger.warn('Version mismatch detected:');
+        logger.warn("Version mismatch detected:");
         for (const m of mismatches) {
           logger.warn(`  ${m}`);
         }
-        logger.info('Consider updating: npm install -g @cluesmith/codev');
+        logger.info("Consider updating: npm install -g @cluesmith/codev");
         logger.blank();
       }
 
@@ -240,14 +277,14 @@ async function startRemote(options: StartOptions): Promise<void> {
     localPort = Number(options.port);
   } else {
     // Register with a unique key for this remote target
-    const remoteKey = `remote:${user}@${host}:${remotePath || 'default'}`;
+    const remoteKey = `remote:${user}@${host}:${remotePath || "default"}`;
     localPort = getPortBlock(remoteKey);
   }
 
-  logger.header('Starting Remote Agent Farm');
-  logger.kv('Host', `${user}@${host}`);
-  if (remotePath) logger.kv('Path', remotePath);
-  logger.kv('Local Port', localPort);
+  logger.header("Starting Remote Agent Farm");
+  logger.kv("Host", `${user}@${host}`);
+  if (remotePath) logger.kv("Path", remotePath);
+  logger.kv("Local Port", localPort);
 
   // Build the remote command
   // If no path specified, use the current directory name to find project on remote
@@ -261,7 +298,7 @@ async function startRemote(options: StartOptions): Promise<void> {
   const remoteCommand = `bash -l -c '${innerCommand.replace(/'/g, "'\\''")}'`;
 
   // Check passwordless SSH is configured
-  logger.info('Checking SSH connection...');
+  logger.info("Checking SSH connection...");
   const sshResult = await checkPasswordlessSSH(user, host);
   if (!sshResult.ok) {
     logger.blank();
@@ -275,44 +312,51 @@ Then verify with:
   }
 
   // Check remote CLI versions (non-blocking warning)
-  logger.info('Checking remote versions...');
+  logger.info("Checking remote versions...");
   await checkRemoteVersions(user, host);
 
-  logger.info('Connecting via SSH...');
+  logger.info("Connecting via SSH...");
 
   // Spawn SSH with port forwarding, -f backgrounds after auth
   const sshArgs = [
-    '-f',  // Background after authentication
-    '-L', `${localPort}:localhost:${localPort}`,
-    '-o', 'ServerAliveInterval=30',
-    '-o', 'ServerAliveCountMax=3',
-    '-o', 'ExitOnForwardFailure=yes',
+    "-f", // Background after authentication
+    "-L",
+    `${localPort}:localhost:${localPort}`,
+    "-o",
+    "ServerAliveInterval=30",
+    "-o",
+    "ServerAliveCountMax=3",
+    "-o",
+    "ExitOnForwardFailure=yes",
     `${user}@${host}`,
     remoteCommand,
   ];
 
-  const result = spawnSync('ssh', sshArgs, {
-    stdio: 'inherit',
+  const result = spawnSync("ssh", sshArgs, {
+    stdio: "inherit",
   });
 
   if (result.status !== 0) {
-    logger.error('SSH connection failed');
+    logger.error("SSH connection failed");
     process.exit(1);
   }
 
   logger.blank();
-  logger.success('Remote Agent Farm connected!');
-  logger.kv('Dashboard', `http://localhost:${localPort}`);
-  logger.info('SSH tunnel running in background');
+  logger.success("Remote Agent Farm connected!");
+  logger.kv("Dashboard", `http://localhost:${localPort}`);
+  logger.info("SSH tunnel running in background");
 
   if (!options.noBrowser) {
     await openBrowser(`http://localhost:${localPort}`);
   }
 
   // Find and report the SSH PID for cleanup
-  const pgrep = spawnSync('pgrep', ['-f', `ssh.*${localPort}:localhost:${localPort}.*${host}`]);
+  const pgrep = spawnSync("pgrep", [
+    "-f",
+    `ssh.*${localPort}:localhost:${localPort}.*${host}`,
+  ]);
   if (pgrep.status === 0) {
-    const pid = pgrep.stdout.toString().trim().split('\n')[0];
+    const pid = pgrep.stdout.toString().trim().split("\n")[0];
     logger.info(`To disconnect: kill ${pid}`);
   }
 }
@@ -351,14 +395,14 @@ export async function start(options: StartOptions = {}): Promise<void> {
 
       // In remote mode (--no-browser), keep process alive so SSH tunnel stays connected
       if (options.noBrowser) {
-        logger.info('Keeping connection alive for remote tunnel...');
+        logger.info("Keeping connection alive for remote tunnel...");
         // Block forever - SSH disconnect will kill us
         await new Promise(() => {});
       }
       return;
     } else {
       // PID is dead but state exists - clear stale state and continue
-      logger.info('Clearing stale architect state (process no longer running)');
+      logger.info("Clearing stale architect state (process no longer running)");
       setArchitect(null);
     }
   }
@@ -371,33 +415,44 @@ export async function start(options: StartOptions = {}): Promise<void> {
 
   // Determine dashboard port early (needed for role prompt and server)
   // If --port was specified, use it for dashboard (important for remote tunneling)
-  const dashboardPort = options.port ? Number(options.port) : config.dashboardPort;
+  const dashboardPort = options.port
+    ? Number(options.port)
+    : config.dashboardPort;
 
   // Command is passed from index.ts (already resolved via CLI > config.json > default)
-  let cmd = options.cmd || 'claude';
+  let cmd = options.cmd || "claude";
 
   // Check if base command exists before we wrap it in a launch script
-  const baseCmdName = cmd.split(' ')[0];
+  const baseCmdName = cmd.split(" ")[0];
   if (!(await commandExists(baseCmdName))) {
     fatal(`Command not found: ${baseCmdName}`);
   }
 
   // Load architect role if available and not disabled
   if (!options.noRole) {
-    const role = loadRolePrompt(config, 'architect');
+    const role = loadRolePrompt(config, "architect");
     if (role) {
       // Write role to a file and create a launch script to avoid shell escaping issues
       // The architect.md file contains backticks, $variables, and other shell-sensitive chars
-      const roleFile = resolve(config.stateDir, 'architect-role.md');
+      const roleFile = resolve(config.stateDir, "architect-role.md");
       // Inject the actual dashboard port into the role prompt
-      const roleContent = role.content.replace(/\{PORT\}/g, String(dashboardPort));
-      writeFileSync(roleFile, roleContent, 'utf-8');
+      const roleContent = role.content.replace(
+        /\{PORT\}/g,
+        String(dashboardPort)
+      );
+      writeFileSync(roleFile, roleContent, "utf-8");
 
-      const launchScript = resolve(config.stateDir, 'launch-architect.sh');
-      writeFileSync(launchScript, `#!/bin/bash
-cd "${config.projectRoot}"
-exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
-`, { mode: 0o755 });
+      const launchScript = resolve(config.stateDir, "launch-architect.sh");
+
+      writeLaunchScript({
+        scriptPath: launchScript,
+        cwd: config.projectRoot,
+        execCommand: buildPromptCommand({
+          command: cmd,
+          systemPromptFile: roleFile,
+        }),
+        mode: 0o755,
+      });
 
       cmd = launchScript;
       logger.info(`Loaded architect role (${role.source})`);
@@ -409,16 +464,22 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
   let architectPort = config.architectPort;
   if (options.port !== undefined) {
     const parsedPort = Number(options.port);
-    if (!Number.isFinite(parsedPort) || parsedPort < 1024 || parsedPort > 65535) {
-      fatal(`Invalid port: ${options.port}. Must be a number between 1024-65535`);
+    if (
+      !Number.isFinite(parsedPort) ||
+      parsedPort < 1024 ||
+      parsedPort > 65535
+    ) {
+      fatal(
+        `Invalid port: ${options.port}. Must be a number between 1024-65535`
+      );
     }
     architectPort = parsedPort + 1; // Offset from dashboard port
   }
 
-  logger.header('Starting Agent Farm');
-  logger.kv('Project', config.projectRoot);
-  logger.kv('Command', cmd);
-  logger.kv('Port', architectPort);
+  logger.header("Starting Agent Farm");
+  logger.kv("Project", config.projectRoot);
+  logger.kv("Command", cmd);
+  logger.kv("Port", architectPort);
 
   // Start architect in tmux session for persistence
   // Use port in session name to ensure uniqueness across projects
@@ -433,29 +494,41 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
 
   // Create tmux session with the command
   // Note: Inner double quotes handle paths with spaces (e.g., "My Drive")
-  await run(`tmux new-session -d -s ${sessionName} -x 200 -y 50 '"${cmd}"'`, { cwd: config.projectRoot });
+  await run(`tmux new-session -d -s ${sessionName} -x 200 -y 50 '"${cmd}"'`, {
+    cwd: config.projectRoot,
+  });
   await run(`tmux set-option -t ${sessionName} status off`);
   await run(`tmux set-option -t ${sessionName} -g mouse on`);
   await run(`tmux set-option -t ${sessionName} -g set-clipboard on`);
   await run(`tmux set-option -t ${sessionName} -g allow-passthrough on`);
 
   // Copy selection to clipboard when mouse is released (pbcopy for macOS)
-  await run(`tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"`);
-  await run(`tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"`);
+  await run(
+    `tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"`
+  );
+  await run(
+    `tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"`
+  );
 
   // Start ttyd attached to the tmux session
-  const customIndexPath = resolve(config.templatesDir, 'ttyd-index.html');
+  const customIndexPath = resolve(config.templatesDir, "ttyd-index.html");
   const hasCustomIndex = existsSync(customIndexPath);
   if (hasCustomIndex) {
-    logger.info('Using custom terminal with file click support');
+    logger.info("Using custom terminal with file click support");
   }
 
-  const bindHost = options.allowInsecureRemote ? '0.0.0.0' : undefined;
+  const bindHost = options.allowInsecureRemote ? "0.0.0.0" : undefined;
 
   if (options.allowInsecureRemote) {
-    logger.warn('⚠️  INSECURE MODE: Binding to 0.0.0.0 - accessible from any network!');
-    logger.warn('   No authentication - anyone on your network can access the terminal.');
-    logger.warn('   DEPRECATED: Use `af start --remote user@host` for secure remote access instead.');
+    logger.warn(
+      "⚠️  INSECURE MODE: Binding to 0.0.0.0 - accessible from any network!"
+    );
+    logger.warn(
+      "   No authentication - anyone on your network can access the terminal."
+    );
+    logger.warn(
+      "   DEPRECATED: Use `af start --remote user@host` for secure remote access instead."
+    );
   }
 
   const ttydProcess = spawnTtyd({
@@ -467,7 +540,7 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
   });
 
   if (!ttydProcess?.pid) {
-    fatal('Failed to start ttyd process');
+    fatal("Failed to start ttyd process");
   }
 
   // Rename Claude session for better history tracking
@@ -489,11 +562,16 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
   await new Promise((resolve) => setTimeout(resolve, 500));
 
   // Start the dashboard server on the main port
-  await startDashboard(config.projectRoot, dashboardPort, architectPort, bindHost);
+  await startDashboard(
+    config.projectRoot,
+    dashboardPort,
+    architectPort,
+    bindHost
+  );
 
   logger.blank();
-  logger.success('Agent Farm started!');
-  logger.kv('Dashboard', `http://localhost:${dashboardPort}`);
+  logger.success("Agent Farm started!");
+  logger.kv("Dashboard", `http://localhost:${dashboardPort}`);
 
   // Open dashboard in browser (unless --no-browser)
   if (!options.noBrowser) {
@@ -505,14 +583,17 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
  * Wait for a server to respond on a given port
  * Returns true if server responds, false if timeout
  */
-async function waitForServer(port: number, timeoutMs: number = 5000): Promise<boolean> {
+async function waitForServer(
+  port: number,
+  timeoutMs: number = 5000
+): Promise<boolean> {
   const startTime = Date.now();
   const pollInterval = 100;
 
   while (Date.now() - startTime < timeoutMs) {
     try {
       const response = await fetch(`http://localhost:${port}/`, {
-        method: 'HEAD',
+        method: "HEAD",
         signal: AbortSignal.timeout(500),
       });
       if (response.ok || response.status === 404) {
@@ -530,12 +611,17 @@ async function waitForServer(port: number, timeoutMs: number = 5000): Promise<bo
 /**
  * Start the dashboard HTTP server
  */
-async function startDashboard(projectRoot: string, port: number, _architectPort: number, bindHost?: string): Promise<void> {
+async function startDashboard(
+  projectRoot: string,
+  port: number,
+  _architectPort: number,
+  bindHost?: string
+): Promise<void> {
   const config = getConfig();
 
   // Try TypeScript source first (dev mode), then compiled JS
-  const tsScript = resolve(config.serversDir, 'dashboard-server.ts');
-  const jsScript = resolve(config.serversDir, 'dashboard-server.js');
+  const tsScript = resolve(config.serversDir, "dashboard-server.ts");
+  const jsScript = resolve(config.serversDir, "dashboard-server.js");
 
   let command: string;
   let args: string[];
@@ -548,32 +634,34 @@ async function startDashboard(projectRoot: string, port: number, _architectPort:
 
   if (existsSync(tsScript)) {
     // Dev mode: run with tsx
-    command = 'npx';
-    args = ['tsx', tsScript, ...serverArgs];
+    command = "npx";
+    args = ["tsx", tsScript, ...serverArgs];
   } else if (existsSync(jsScript)) {
     // Prod mode: run compiled JS
-    command = 'node';
+    command = "node";
     args = [jsScript, ...serverArgs];
   } else {
-    logger.warn('Dashboard server not found, skipping dashboard');
+    logger.warn("Dashboard server not found, skipping dashboard");
     return;
   }
 
-  logger.debug(`Starting dashboard: ${command} ${args.join(' ')}`);
+  logger.debug(`Starting dashboard: ${command} ${args.join(" ")}`);
 
   const serverProcess = spawnDetached(command, args, {
     cwd: projectRoot,
   });
 
   if (!serverProcess.pid) {
-    logger.warn('Failed to start dashboard server');
+    logger.warn("Failed to start dashboard server");
     return;
   }
 
   // Wait for server to actually be ready
   const isReady = await waitForServer(port, 5000);
   if (!isReady) {
-    logger.warn(`Dashboard server did not respond on port ${port} within 5 seconds`);
-    logger.warn('Check for errors above or run with DEBUG=1 for more details');
+    logger.warn(
+      `Dashboard server did not respond on port ${port} within 5 seconds`
+    );
+    logger.warn("Check for errors above or run with DEBUG=1 for more details");
   }
 }

@@ -4,12 +4,17 @@
  * Provides unified interface to gemini-cli, codex, and claude CLIs.
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { spawn, execSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
-import chalk from 'chalk';
-import { resolveCodevFile, readCodevFile, findProjectRoot, hasLocalOverride } from '../../lib/skeleton.js';
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { spawn, execSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import chalk from "chalk";
+import {
+  resolveCodevFile,
+  readCodevFile,
+  findProjectRoot,
+  hasLocalOverride,
+} from "../../lib/skeleton.js";
 
 // Model configuration
 interface ModelConfig {
@@ -19,18 +24,18 @@ interface ModelConfig {
 }
 
 const MODEL_CONFIGS: Record<string, ModelConfig> = {
-  gemini: { cli: 'gemini', args: ['--yolo'], envVar: 'GEMINI_SYSTEM_MD' },
+  gemini: { cli: "gemini", args: ["--yolo"], envVar: "GEMINI_SYSTEM_MD" },
   // Codex uses experimental_instructions_file config flag (not env var)
   // See: https://github.com/openai/codex/discussions/3896
-  codex: { cli: 'codex', args: ['exec', '--full-auto'], envVar: null },
-  claude: { cli: 'claude', args: ['--print', '-p'], envVar: null },
+  codex: { cli: "codex", args: ["exec", "--full-auto"], envVar: null },
+  claude: { cli: "claude", args: ["--print", "-p"], envVar: null },
 };
 
 // Model aliases
 const MODEL_ALIASES: Record<string, string> = {
-  pro: 'gemini',
-  gpt: 'codex',
-  opus: 'claude',
+  pro: "gemini",
+  gpt: "codex",
+  opus: "claude",
 };
 
 interface ConsultOptions {
@@ -44,11 +49,11 @@ interface ConsultOptions {
 
 // Valid review types
 const VALID_REVIEW_TYPES = [
-  'spec-review',
-  'plan-review',
-  'impl-review',
-  'pr-ready',
-  'integration-review',
+  "spec-review",
+  "plan-review",
+  "impl-review",
+  "pr-ready",
+  "integration-review",
 ];
 
 /**
@@ -64,18 +69,19 @@ function isValidRoleName(roleName: string): boolean {
  * Excludes non-role files like README.md, review-types/, etc.
  */
 function listAvailableRoles(projectRoot: string): string[] {
-  const rolesDir = path.join(projectRoot, 'codev', 'roles');
+  const rolesDir = path.join(projectRoot, "codev", "roles");
   if (!fs.existsSync(rolesDir)) return [];
 
-  const excludePatterns = ['readme', 'review-types', 'overview', 'index'];
+  const excludePatterns = ["readme", "review-types", "overview", "index"];
 
-  return fs.readdirSync(rolesDir)
-    .filter(f => {
-      if (!f.endsWith('.md')) return false;
-      const basename = f.replace('.md', '').toLowerCase();
-      return !excludePatterns.some(pattern => basename.includes(pattern));
+  return fs
+    .readdirSync(rolesDir)
+    .filter((f) => {
+      if (!f.endsWith(".md")) return false;
+      const basename = f.replace(".md", "").toLowerCase();
+      return !excludePatterns.some((pattern) => basename.includes(pattern));
     })
-    .map(f => f.replace('.md', ''));
+    .map((f) => f.replace(".md", ""));
 }
 
 /**
@@ -87,7 +93,7 @@ function loadCustomRole(projectRoot: string, roleName: string): string {
   if (!isValidRoleName(roleName)) {
     throw new Error(
       `Invalid role name: '${roleName}'\n` +
-      'Role names can only contain letters, numbers, hyphens, and underscores.'
+        "Role names can only contain letters, numbers, hyphens, and underscores."
     );
   }
 
@@ -97,12 +103,11 @@ function loadCustomRole(projectRoot: string, roleName: string): string {
 
   if (!roleContent) {
     const available = listAvailableRoles(projectRoot);
-    const availableStr = available.length > 0
-      ? `\n\nAvailable roles:\n${available.map(r => `  - ${r}`).join('\n')}`
-      : '\n\nNo custom roles found in codev/roles/';
-    throw new Error(
-      `Role '${roleName}' not found.${availableStr}`
-    );
+    const availableStr =
+      available.length > 0
+        ? `\n\nAvailable roles:\n${available.map((r) => `  - ${r}`).join("\n")}`
+        : "\n\nNo custom roles found in codev/roles/";
+    throw new Error(`Role '${roleName}' not found.${availableStr}`);
   }
 
   return roleContent;
@@ -113,12 +118,12 @@ function loadCustomRole(projectRoot: string, roleName: string): string {
  * Checks local codev/roles/consultant.md first, then falls back to embedded skeleton.
  */
 function loadRole(projectRoot: string): string {
-  const role = readCodevFile('roles/consultant.md', projectRoot);
+  const role = readCodevFile("roles/consultant.md", projectRoot);
   if (!role) {
     throw new Error(
-      'consultant.md not found.\n' +
-      'Checked: local codev/roles/consultant.md and embedded skeleton.\n' +
-      'Run from a codev-enabled project or install @cluesmith/codev globally.'
+      "consultant.md not found.\n" +
+        "Checked: local codev/roles/consultant.md and embedded skeleton.\n" +
+        "Run from a codev-enabled project or install @cluesmith/codev globally."
     );
   }
   return role;
@@ -129,7 +134,10 @@ function loadRole(projectRoot: string): string {
  * Checks consult-types/{type}.md first (new location),
  * then falls back to roles/review-types/{type}.md (deprecated) with a warning.
  */
-function loadReviewTypePrompt(projectRoot: string, reviewType: string): string | null {
+function loadReviewTypePrompt(
+  projectRoot: string,
+  reviewType: string
+): string | null {
   const primaryPath = `consult-types/${reviewType}.md`;
   const fallbackPath = `roles/review-types/${reviewType}.md`;
 
@@ -140,8 +148,16 @@ function loadReviewTypePrompt(projectRoot: string, reviewType: string): string |
 
   // 2. Check LOCAL roles/review-types/ (deprecated location with warning)
   if (hasLocalOverride(fallbackPath, projectRoot)) {
-    console.error(chalk.yellow('Warning: Review types in roles/review-types/ are deprecated.'));
-    console.error(chalk.yellow('Move your custom types to consult-types/ for future compatibility.'));
+    console.error(
+      chalk.yellow(
+        "Warning: Review types in roles/review-types/ are deprecated."
+      )
+    );
+    console.error(
+      chalk.yellow(
+        "Move your custom types to consult-types/ for future compatibility."
+      )
+    );
     return readCodevFile(fallbackPath, projectRoot);
   }
 
@@ -158,23 +174,25 @@ function loadReviewTypePrompt(projectRoot: string, reviewType: string): string |
  * Load .env file if it exists
  */
 function loadDotenv(projectRoot: string): void {
-  const envFile = path.join(projectRoot, '.env');
+  const envFile = path.join(projectRoot, ".env");
   if (!fs.existsSync(envFile)) return;
 
-  const content = fs.readFileSync(envFile, 'utf-8');
-  for (const line of content.split('\n')) {
+  const content = fs.readFileSync(envFile, "utf-8");
+  for (const line of content.split("\n")) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
+    if (!trimmed || trimmed.startsWith("#")) continue;
 
-    const eqIndex = trimmed.indexOf('=');
+    const eqIndex = trimmed.indexOf("=");
     if (eqIndex === -1) continue;
 
     const key = trimmed.substring(0, eqIndex).trim();
     let value = trimmed.substring(eqIndex + 1).trim();
 
     // Remove surrounding quotes
-    if ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))) {
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
       value = value.slice(1, -1);
     }
 
@@ -189,13 +207,13 @@ function loadDotenv(projectRoot: string): void {
  * Find a spec file by number
  */
 function findSpec(projectRoot: string, number: number): string | null {
-  const specsDir = path.join(projectRoot, 'codev', 'specs');
-  const pattern = String(number).padStart(4, '0');
+  const specsDir = path.join(projectRoot, "codev", "specs");
+  const pattern = String(number).padStart(4, "0");
 
   if (fs.existsSync(specsDir)) {
     const files = fs.readdirSync(specsDir);
     for (const file of files) {
-      if (file.startsWith(pattern) && file.endsWith('.md')) {
+      if (file.startsWith(pattern) && file.endsWith(".md")) {
         return path.join(specsDir, file);
       }
     }
@@ -207,13 +225,13 @@ function findSpec(projectRoot: string, number: number): string | null {
  * Find a plan file by number
  */
 function findPlan(projectRoot: string, number: number): string | null {
-  const plansDir = path.join(projectRoot, 'codev', 'plans');
-  const pattern = String(number).padStart(4, '0');
+  const plansDir = path.join(projectRoot, "codev", "plans");
+  const pattern = String(number).padStart(4, "0");
 
   if (fs.existsSync(plansDir)) {
     const files = fs.readdirSync(plansDir);
     for (const file of files) {
-      if (file.startsWith(pattern) && file.endsWith('.md')) {
+      if (file.startsWith(pattern) && file.endsWith(".md")) {
         return path.join(plansDir, file);
       }
     }
@@ -224,19 +242,28 @@ function findPlan(projectRoot: string, number: number): string | null {
 /**
  * Log query to history file
  */
-function logQuery(projectRoot: string, model: string, query: string, duration?: number): void {
+function logQuery(
+  projectRoot: string,
+  model: string,
+  query: string,
+  duration?: number
+): void {
   try {
-    const logDir = path.join(projectRoot, '.consult');
+    const logDir = path.join(projectRoot, ".consult");
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
     }
 
-    const logFile = path.join(logDir, 'history.log');
+    const logFile = path.join(logDir, "history.log");
     const timestamp = new Date().toISOString();
-    const queryPreview = query.substring(0, 100).replace(/\n/g, ' ');
-    const durationStr = duration !== undefined ? ` duration=${duration.toFixed(1)}s` : '';
+    const queryPreview = query.substring(0, 100).replace(/\n/g, " ");
+    const durationStr =
+      duration !== undefined ? ` duration=${duration.toFixed(1)}s` : "";
 
-    fs.appendFileSync(logFile, `${timestamp} model=${model}${durationStr} query=${queryPreview}...\n`);
+    fs.appendFileSync(
+      logFile,
+      `${timestamp} model=${model}${durationStr} query=${queryPreview}...\n`
+    );
   } catch {
     // Logging failure should not block consultation
   }
@@ -247,7 +274,7 @@ function logQuery(projectRoot: string, model: string, query: string, duration?: 
  */
 function commandExists(cmd: string): boolean {
   try {
-    execSync(`which ${cmd}`, { stdio: 'pipe' });
+    execSync(`which ${cmd}`, { stdio: "pipe" });
     return true;
   } catch {
     return false;
@@ -266,16 +293,20 @@ async function runConsultation(
   customRole?: string
 ): Promise<void> {
   // Use custom role if specified, otherwise use default consultant role
-  let role = customRole ? loadCustomRole(projectRoot, customRole) : loadRole(projectRoot);
+  let role = customRole
+    ? loadCustomRole(projectRoot, customRole)
+    : loadRole(projectRoot);
 
   // Append review type prompt if specified
   if (reviewType) {
     const typePrompt = loadReviewTypePrompt(projectRoot, reviewType);
     if (typePrompt) {
-      role = role + '\n\n---\n\n' + typePrompt;
+      role = role + "\n\n---\n\n" + typePrompt;
       console.error(`Review type: ${reviewType}`);
     } else {
-      console.error(chalk.yellow(`Warning: Review type prompt not found: ${reviewType}`));
+      console.error(
+        chalk.yellow(`Warning: Review type prompt not found: ${reviewType}`)
+      );
     }
   }
 
@@ -296,43 +327,51 @@ async function runConsultation(
   // Prepare command and environment based on model
   let cmd: string[];
 
-  if (model === 'gemini') {
+  if (model === "gemini") {
     // Gemini uses GEMINI_SYSTEM_MD env var for role
     tempFile = path.join(tmpdir(), `codev-role-${Date.now()}.md`);
     fs.writeFileSync(tempFile, role);
-    env['GEMINI_SYSTEM_MD'] = tempFile;
+    env["GEMINI_SYSTEM_MD"] = tempFile;
 
     cmd = [config.cli, ...config.args, query];
-  } else if (model === 'codex') {
+  } else if (model === "codex") {
     // Codex uses experimental_instructions_file config flag (not env var)
     // This is the official approach per https://github.com/openai/codex/discussions/3896
     tempFile = path.join(tmpdir(), `codev-role-${Date.now()}.md`);
     fs.writeFileSync(tempFile, role);
     cmd = [
       config.cli,
-      'exec',
-      '-c', `experimental_instructions_file=${tempFile}`,
-      '-c', 'model_reasoning_effort=low', // Faster responses (10-20% improvement)
-      '--full-auto',
+      "exec",
+      "-c",
+      `developer_instructions=${tempFile}`,
+      "-c",
+      "model_reasoning_effort=low", // Faster responses (10-20% improvement)
+      "--full-auto",
       query,
     ];
-  } else if (model === 'claude') {
+  } else if (model === "claude") {
     // Claude gets role prepended to query
     const fullQuery = `${role}\n\n---\n\nConsultation Request:\n${query}`;
-    cmd = [config.cli, ...config.args, fullQuery, '--dangerously-skip-permissions'];
+    cmd = [
+      config.cli,
+      ...config.args,
+      fullQuery,
+      "--dangerously-skip-permissions",
+    ];
   } else {
     throw new Error(`Unknown model: ${model}`);
   }
 
   if (dryRun) {
     console.log(chalk.yellow(`[${model}] Would execute:`));
-    console.log(`  Command: ${cmd.join(' ')}`);
+    console.log(`  Command: ${cmd.join(" ")}`);
     if (Object.keys(env).length > 0) {
       for (const [key, value] of Object.entries(env)) {
-        if (key === 'GEMINI_SYSTEM_MD') {
+        if (key === "GEMINI_SYSTEM_MD") {
           console.log(`  Env: ${key}=<temp file with consultant role>`);
         } else {
-          const preview = value.substring(0, 50) + (value.length > 50 ? '...' : '');
+          const preview =
+            value.substring(0, 50) + (value.length > 50 ? "..." : "");
           console.log(`  Env: ${key}=${preview}`);
         }
       }
@@ -348,10 +387,10 @@ async function runConsultation(
   return new Promise((resolve, reject) => {
     const proc = spawn(cmd[0], cmd.slice(1), {
       env: fullEnv,
-      stdio: 'inherit',
+      stdio: "inherit",
     });
 
-    proc.on('close', (code) => {
+    proc.on("close", (code) => {
       const duration = (Date.now() - startTime) / 1000;
       logQuery(projectRoot, model, query, duration);
 
@@ -368,7 +407,7 @@ async function runConsultation(
       }
     });
 
-    proc.on('error', (error) => {
+    proc.on("error", (error) => {
       if (tempFile && fs.existsSync(tempFile)) {
         fs.unlinkSync(tempFile);
       }
@@ -380,16 +419,25 @@ async function runConsultation(
 /**
  * Fetch PR data and return it inline
  */
-function fetchPRData(prNumber: number): { info: string; diff: string; comments: string } {
+function fetchPRData(prNumber: number): {
+  info: string;
+  diff: string;
+  comments: string;
+} {
   console.error(`Fetching PR #${prNumber} data...`);
 
   try {
-    const info = execSync(`gh pr view ${prNumber} --json title,body,state,author,baseRefName,headRefName,files,additions,deletions`, { encoding: 'utf-8' });
-    const diff = execSync(`gh pr diff ${prNumber}`, { encoding: 'utf-8' });
+    const info = execSync(
+      `gh pr view ${prNumber} --json title,body,state,author,baseRefName,headRefName,files,additions,deletions`,
+      { encoding: "utf-8" }
+    );
+    const diff = execSync(`gh pr diff ${prNumber}`, { encoding: "utf-8" });
 
-    let comments = '(No comments)';
+    let comments = "(No comments)";
     try {
-      comments = execSync(`gh pr view ${prNumber} --comments`, { encoding: 'utf-8' });
+      comments = execSync(`gh pr view ${prNumber} --comments`, {
+        encoding: "utf-8",
+      });
     } catch {
       // No comments or error fetching
     }
@@ -408,9 +456,13 @@ function buildPRQuery(prNumber: number, _projectRoot: string): string {
 
   // Truncate diff if too large (keep first 50k chars)
   const maxDiffSize = 50000;
-  const diff = prData.diff.length > maxDiffSize
-    ? prData.diff.substring(0, maxDiffSize) + '\n\n... (diff truncated, ' + prData.diff.length + ' chars total)'
-    : prData.diff;
+  const diff =
+    prData.diff.length > maxDiffSize
+      ? prData.diff.substring(0, maxDiffSize) +
+        "\n\n... (diff truncated, " +
+        prData.diff.length +
+        " chars total)"
+      : prData.diff;
 
   return `Review Pull Request #${prNumber}
 
@@ -524,20 +576,37 @@ KEY_ISSUES: [List of critical issues if any, or "None"]`;
  * Main consult entry point
  */
 export async function consult(options: ConsultOptions): Promise<void> {
-  const { model: modelInput, subcommand, args, dryRun = false, reviewType, role: customRole } = options;
+  const {
+    model: modelInput,
+    subcommand,
+    args,
+    dryRun = false,
+    reviewType,
+    role: customRole,
+  } = options;
 
   // Resolve model alias
-  const model = MODEL_ALIASES[modelInput.toLowerCase()] || modelInput.toLowerCase();
+  const model =
+    MODEL_ALIASES[modelInput.toLowerCase()] || modelInput.toLowerCase();
 
   // Validate model
   if (!MODEL_CONFIGS[model]) {
-    const validModels = [...Object.keys(MODEL_CONFIGS), ...Object.keys(MODEL_ALIASES)];
-    throw new Error(`Unknown model: ${modelInput}\nValid models: ${validModels.join(', ')}`);
+    const validModels = [
+      ...Object.keys(MODEL_CONFIGS),
+      ...Object.keys(MODEL_ALIASES),
+    ];
+    throw new Error(
+      `Unknown model: ${modelInput}\nValid models: ${validModels.join(", ")}`
+    );
   }
 
   // Validate review type if provided
   if (reviewType && !VALID_REVIEW_TYPES.includes(reviewType)) {
-    throw new Error(`Invalid review type: ${reviewType}\nValid types: ${VALID_REVIEW_TYPES.join(', ')}`);
+    throw new Error(
+      `Invalid review type: ${reviewType}\nValid types: ${VALID_REVIEW_TYPES.join(
+        ", "
+      )}`
+    );
   }
 
   const projectRoot = findProjectRoot();
@@ -554,9 +623,11 @@ export async function consult(options: ConsultOptions): Promise<void> {
   let query: string;
 
   switch (subcommand.toLowerCase()) {
-    case 'pr': {
+    case "pr": {
       if (args.length === 0) {
-        throw new Error('PR number required\nUsage: consult -m <model> pr <number>');
+        throw new Error(
+          "PR number required\nUsage: consult -m <model> pr <number>"
+        );
       }
       const prNumber = parseInt(args[0], 10);
       if (isNaN(prNumber)) {
@@ -566,9 +637,11 @@ export async function consult(options: ConsultOptions): Promise<void> {
       break;
     }
 
-    case 'spec': {
+    case "spec": {
       if (args.length === 0) {
-        throw new Error('Spec number required\nUsage: consult -m <model> spec <number>');
+        throw new Error(
+          "Spec number required\nUsage: consult -m <model> spec <number>"
+        );
       }
       const specNumber = parseInt(args[0], 10);
       if (isNaN(specNumber)) {
@@ -585,9 +658,11 @@ export async function consult(options: ConsultOptions): Promise<void> {
       break;
     }
 
-    case 'plan': {
+    case "plan": {
       if (args.length === 0) {
-        throw new Error('Plan number required\nUsage: consult -m <model> plan <number>');
+        throw new Error(
+          "Plan number required\nUsage: consult -m <model> plan <number>"
+        );
       }
       const planNumber = parseInt(args[0], 10);
       if (isNaN(planNumber)) {
@@ -604,29 +679,40 @@ export async function consult(options: ConsultOptions): Promise<void> {
       break;
     }
 
-    case 'general': {
+    case "general": {
       if (args.length === 0) {
-        throw new Error('Query required\nUsage: consult -m <model> general "<query>"');
+        throw new Error(
+          'Query required\nUsage: consult -m <model> general "<query>"'
+        );
       }
-      query = args.join(' ');
+      query = args.join(" ");
       break;
     }
 
     default:
-      throw new Error(`Unknown subcommand: ${subcommand}\nValid subcommands: pr, spec, plan, general`);
+      throw new Error(
+        `Unknown subcommand: ${subcommand}\nValid subcommands: pr, spec, plan, general`
+      );
   }
 
   // Show the query/prompt being sent
-  console.error('');
-  console.error('='.repeat(60));
-  console.error('PROMPT:');
-  console.error('='.repeat(60));
+  console.error("");
+  console.error("=".repeat(60));
+  console.error("PROMPT:");
+  console.error("=".repeat(60));
   console.error(query);
-  console.error('');
-  console.error('='.repeat(60));
+  console.error("");
+  console.error("=".repeat(60));
   console.error(`[${model.toUpperCase()}] Starting consultation...`);
-  console.error('='.repeat(60));
-  console.error('');
+  console.error("=".repeat(60));
+  console.error("");
 
-  await runConsultation(model, query, projectRoot, dryRun, reviewType, customRole);
+  await runConsultation(
+    model,
+    query,
+    projectRoot,
+    dryRun,
+    reviewType,
+    customRole
+  );
 }
