@@ -14,19 +14,22 @@
  * ```
  */
 
-export type KnownCli = 'claude' | 'codex' | 'gemini';
+export type KnownCli = "claude" | "codex" | "gemini";
 
 export interface PromptCommandOptions {
   command: string | string[];
   systemPromptFile?: string;
   userPromptFile?: string;
   userPromptText?: string;
-  mode?: 'interactive' | 'one-shot';
+  mode?: "interactive" | "one-shot";
 }
 
 function normalizeCommand(command: string | string[]): string {
   if (Array.isArray(command)) {
-    return command.map(part => part.trim()).join(' ').trim();
+    return command
+      .map((part) => part.trim())
+      .join(" ")
+      .trim();
   }
   return command.trim();
 }
@@ -43,10 +46,10 @@ function detectCli(command: string): KnownCli | null {
   const tokens = command.trim().split(/\s+/);
   for (const token of tokens) {
     if (!token) continue;
-    if (token.includes('=') && !token.includes('/')) continue; // env var assignment
-    if (token.startsWith('-')) continue;
-    const name = token.split('/').pop() || token;
-    if (name === 'claude' || name === 'codex' || name === 'gemini') {
+    if (token.includes("=") && !token.includes("/")) continue; // env var assignment
+    if (token.startsWith("-")) continue;
+    const name = token.split("/").pop() || token;
+    if (name === "claude" || name === "codex" || name === "gemini") {
       return name;
     }
   }
@@ -73,10 +76,10 @@ export function buildPromptCommand(options: PromptCommandOptions): string {
   const cli = detectCli(base);
   const userArg = userPromptArg(options);
 
-  if (cli === 'claude') {
+  if (cli === "claude") {
     let cmd = base;
     if (options.systemPromptFile) {
-      cmd += ` --append-system-prompt ${catFile(options.systemPromptFile)}`;
+      cmd += ` --append-system-prompt "${catFile(options.systemPromptFile)}"`;
     }
     if (userArg) {
       cmd += ` ${userArg}`;
@@ -84,23 +87,27 @@ export function buildPromptCommand(options: PromptCommandOptions): string {
     return cmd;
   }
 
-  if (cli === 'codex') {
+  if (cli === "codex") {
     let cmd = base;
-    if (options.systemPromptFile && !cmd.includes('developer_instructions=')) {
-      cmd += ` -c developer_instructions=${quoteShellArg(options.systemPromptFile)}`;
+    if (options.systemPromptFile && !cmd.includes("developer_instructions=")) {
+      cmd += ` -c developer_instructions=${quoteShellArg(
+        options.systemPromptFile
+      )}`;
     }
-    if (userArg && (options.mode ?? 'interactive') === 'one-shot') {
+    if (userArg && (options.mode ?? "interactive") === "one-shot") {
       cmd += ` ${userArg}`;
-    } else if (userArg && (options.mode ?? 'interactive') === 'interactive') {
+    } else if (userArg && (options.mode ?? "interactive") === "interactive") {
       cmd += ` ${userArg}`;
     }
     return cmd;
   }
 
-  if (cli === 'gemini') {
+  if (cli === "gemini") {
     let cmd = base;
     if (options.systemPromptFile) {
-      cmd = `GEMINI_SYSTEM_MD=${quoteShellArg(options.systemPromptFile)} ${cmd}`;
+      cmd = `GEMINI_SYSTEM_MD=${quoteShellArg(
+        options.systemPromptFile
+      )} ${cmd}`;
     }
     if (userArg) {
       cmd += ` ${userArg}`;

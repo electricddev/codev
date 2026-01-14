@@ -81,7 +81,7 @@ async function createAndAttach(args: string[], cmd: string): Promise<void> {
     execCommand: buildPromptCommand({
       command: cmd,
       systemPromptFile: role.path,
-      userPromptText: argsStr.trim(),
+      userPromptText: argsStr.length > 0 ? argsStr.trim() : undefined,
     }),
     mode: 0o755,
   });
@@ -154,7 +154,7 @@ async function createLayoutAndAttach(
     execCommand: buildPromptCommand({
       command: cmd,
       systemPromptFile: role.path,
-      userPromptText: argsStr.trim(),
+      userPromptText: argsStr.length > 0 ? argsStr.trim() : undefined,
     }),
     mode: 0o755,
   });
