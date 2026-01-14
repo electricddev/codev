@@ -8,17 +8,37 @@
  * - shell:    --shell       Bare Claude session (no prompt, no worktree)
  */
 
-import { resolve, basename, join } from 'node:path';
-import { existsSync, readFileSync, writeFileSync, chmodSync, readdirSync, symlinkSync, unlinkSync, type Dirent } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { randomUUID } from 'node:crypto';
-import { readdir } from 'node:fs/promises';
-import type { SpawnOptions, Builder, Config, BuilderType } from '../types.js';
-import { getConfig, ensureDirectories, getResolvedCommands } from '../utils/index.js';
-import { logger, fatal } from '../utils/logger.js';
-import { run, spawnDetached, commandExists, findAvailablePort, spawnTtyd } from '../utils/shell.js';
-import { loadState, upsertBuilder } from '../state.js';
-import { loadRolePrompt } from '../utils/roles.js';
+import { resolve, basename, join } from "node:path";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  chmodSync,
+  readdirSync,
+  symlinkSync,
+  unlinkSync,
+  type Dirent,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
+import { readdir } from "node:fs/promises";
+import type { SpawnOptions, Builder, Config, BuilderType } from "../types.js";
+import {
+  getConfig,
+  ensureDirectories,
+  getResolvedCommands,
+} from "../utils/index.js";
+import { logger, fatal } from "../utils/logger.js";
+import {
+  run,
+  spawnDetached,
+  commandExists,
+  findAvailablePort,
+  spawnTtyd,
+} from "../utils/shell.js";
+import { loadState, upsertBuilder } from "../state.js";
+import { loadRolePrompt } from "../utils/roles.js";
+import { buildPromptCommand } from "../../lib/prompt-command.js";
 
 /**
  * Generate a short 4-character base64-encoded ID
@@ -41,12 +61,12 @@ function getSessionName(config: Config, builderId: string): string {
 
 function generateShortId(): string {
   // Generate random 24-bit number and base64 encode to 4 chars
-  const num = Math.floor(Math.random() * 0xFFFFFF);
-  const bytes = new Uint8Array([num >> 16, (num >> 8) & 0xFF, num & 0xFF]);
+  const num = Math.floor(Math.random() * 0xffffff);
+  const bytes = new Uint8Array([num >> 16, (num >> 8) & 0xff, num & 0xff]);
   return btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '')
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "")
     .substring(0, 4);
 }
 
@@ -56,10 +76,10 @@ function generateShortId(): string {
 function formatDateTime(): string {
   const now = new Date();
   const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
@@ -86,7 +106,9 @@ function renameClaudeSession(sessionName: string, displayName: string): void {
       await run(`tmux send-keys -t "${sessionName}" Enter`);
 
       // Clean up temp file
-      try { unlinkSync(tempFile); } catch {}
+      try {
+        unlinkSync(tempFile);
+      } catch {}
     } catch {
       // Non-fatal - session naming is a nice-to-have
     }
@@ -107,19 +129,23 @@ function validateSpawnOptions(options: SpawnOptions): void {
   ].filter(Boolean);
 
   if (modes.length === 0) {
-    fatal('Must specify one of: --project (-p), --issue (-i), --task, --protocol, --shell, --worktree\n\nRun "af spawn --help" for examples.');
+    fatal(
+      'Must specify one of: --project (-p), --issue (-i), --task, --protocol, --shell, --worktree\n\nRun "af spawn --help" for examples.'
+    );
   }
 
   if (modes.length > 1) {
-    fatal('Flags --project, --issue, --task, --protocol, --shell, --worktree are mutually exclusive');
+    fatal(
+      "Flags --project, --issue, --task, --protocol, --shell, --worktree are mutually exclusive"
+    );
   }
 
   if (options.files && !options.task) {
-    fatal('--files requires --task');
+    fatal("--files requires --task");
   }
 
   if ((options.noComment || options.force) && !options.issue) {
-    fatal('--no-comment and --force require --issue');
+    fatal("--no-comment and --force require --issue");
   }
 }
 
@@ -127,13 +153,13 @@ function validateSpawnOptions(options: SpawnOptions): void {
  * Determine the spawn mode from options
  */
 function getSpawnMode(options: SpawnOptions): BuilderType {
-  if (options.project) return 'spec';
-  if (options.issue) return 'bugfix';
-  if (options.task) return 'task';
-  if (options.protocol) return 'protocol';
-  if (options.shell) return 'shell';
-  if (options.worktree) return 'worktree';
-  throw new Error('No mode specified');
+  if (options.project) return "spec";
+  if (options.issue) return "bugfix";
+  if (options.task) return "task";
+  if (options.protocol) return "protocol";
+  if (options.shell) return "shell";
+  if (options.worktree) return "worktree";
+  throw new Error("No mode specified");
 }
 
 // loadRolePrompt imported from ../utils/roles.js
@@ -141,20 +167,34 @@ function getSpawnMode(options: SpawnOptions): BuilderType {
 /**
  * Load a protocol-specific role if it exists
  */
-function loadProtocolRole(config: Config, protocolName: string): { content: string; source: string } | null {
-  const protocolRolePath = resolve(config.codevDir, 'protocols', protocolName, 'role.md');
+function loadProtocolRole(
+  config: Config,
+  protocolName: string
+): { content: string; source: string } | null {
+  const protocolRolePath = resolve(
+    config.codevDir,
+    "protocols",
+    protocolName,
+    "role.md"
+  );
   if (existsSync(protocolRolePath)) {
-    return { content: readFileSync(protocolRolePath, 'utf-8'), source: 'protocol' };
+    return {
+      content: readFileSync(protocolRolePath, "utf-8"),
+      source: "protocol",
+    };
   }
   // Fall back to builder role
-  return loadRolePrompt(config, 'builder');
+  return loadRolePrompt(config, "builder");
 }
 
 /**
  * Find a spec file by project ID
  */
-async function findSpecFile(codevDir: string, projectId: string): Promise<string | null> {
-  const specsDir = resolve(codevDir, 'specs');
+async function findSpecFile(
+  codevDir: string,
+  projectId: string
+): Promise<string | null> {
+  const specsDir = resolve(codevDir, "specs");
 
   if (!existsSync(specsDir)) {
     return null;
@@ -164,14 +204,14 @@ async function findSpecFile(codevDir: string, projectId: string): Promise<string
 
   // Try exact match first (e.g., "0001-feature.md")
   for (const file of files) {
-    if (file.startsWith(projectId) && file.endsWith('.md')) {
+    if (file.startsWith(projectId) && file.endsWith(".md")) {
       return resolve(specsDir, file);
     }
   }
 
   // Try partial match (e.g., just "0001")
   for (const file of files) {
-    if (file.startsWith(projectId + '-') && file.endsWith('.md')) {
+    if (file.startsWith(projectId + "-") && file.endsWith(".md")) {
       return resolve(specsDir, file);
     }
   }
@@ -183,19 +223,19 @@ async function findSpecFile(codevDir: string, projectId: string): Promise<string
  * Validate that a protocol exists
  */
 function validateProtocol(config: Config, protocolName: string): void {
-  const protocolDir = resolve(config.codevDir, 'protocols', protocolName);
-  const protocolFile = resolve(protocolDir, 'protocol.md');
+  const protocolDir = resolve(config.codevDir, "protocols", protocolName);
+  const protocolFile = resolve(protocolDir, "protocol.md");
 
   if (!existsSync(protocolDir)) {
     // List available protocols
-    const protocolsDir = resolve(config.codevDir, 'protocols');
-    let available = '';
+    const protocolsDir = resolve(config.codevDir, "protocols");
+    let available = "";
     if (existsSync(protocolsDir)) {
       const dirs = readdirSync(protocolsDir, { withFileTypes: true })
         .filter((d: Dirent) => d.isDirectory())
         .map((d: Dirent) => d.name);
       if (dirs.length > 0) {
-        available = `\n\nAvailable protocols: ${dirs.join(', ')}`;
+        available = `\n\nAvailable protocols: ${dirs.join(", ")}`;
       }
     }
     fatal(`Protocol not found: ${protocolName}${available}`);
@@ -210,12 +250,12 @@ function validateProtocol(config: Config, protocolName: string): void {
  * Check for required dependencies
  */
 async function checkDependencies(): Promise<void> {
-  if (!(await commandExists('git'))) {
-    fatal('git not found');
+  if (!(await commandExists("git"))) {
+    fatal("git not found");
   }
 
-  if (!(await commandExists('ttyd'))) {
-    fatal('ttyd not found. Install with: brew install ttyd');
+  if (!(await commandExists("ttyd"))) {
+    fatal("ttyd not found. Install with: brew install ttyd");
   }
 }
 
@@ -238,8 +278,12 @@ async function findFreePort(config: Config): Promise<number> {
 /**
  * Create git branch and worktree
  */
-async function createWorktree(config: Config, branchName: string, worktreePath: string): Promise<void> {
-  logger.info('Creating branch...');
+async function createWorktree(
+  config: Config,
+  branchName: string,
+  worktreePath: string
+): Promise<void> {
+  logger.info("Creating branch...");
   try {
     await run(`git branch ${branchName}`, { cwd: config.projectRoot });
   } catch (error) {
@@ -247,20 +291,22 @@ async function createWorktree(config: Config, branchName: string, worktreePath: 
     logger.debug(`Branch creation: ${error}`);
   }
 
-  logger.info('Creating worktree...');
+  logger.info("Creating worktree...");
   try {
-    await run(`git worktree add "${worktreePath}" ${branchName}`, { cwd: config.projectRoot });
+    await run(`git worktree add "${worktreePath}" ${branchName}`, {
+      cwd: config.projectRoot,
+    });
   } catch (error) {
     fatal(`Failed to create worktree: ${error}`);
   }
 
   // Symlink .env from project root into worktree (if it exists)
-  const rootEnvPath = resolve(config.projectRoot, '.env');
-  const worktreeEnvPath = resolve(worktreePath, '.env');
+  const rootEnvPath = resolve(config.projectRoot, ".env");
+  const worktreeEnvPath = resolve(worktreePath, ".env");
   if (existsSync(rootEnvPath) && !existsSync(worktreeEnvPath)) {
     try {
       symlinkSync(rootEnvPath, worktreeEnvPath);
-      logger.info('Linked .env from project root');
+      logger.info("Linked .env from project root");
     } catch (error) {
       logger.debug(`Failed to symlink .env: ${error}`);
     }
@@ -277,30 +323,38 @@ async function startBuilderSession(
   baseCmd: string,
   prompt: string,
   roleContent: string | null,
-  roleSource: string | null,
+  roleSource: string | null
 ): Promise<{ port: number; pid: number; sessionName: string }> {
   const port = await findFreePort(config);
   const sessionName = getSessionName(config, builderId);
 
-  logger.info('Creating tmux session...');
+  logger.info("Creating tmux session...");
 
   // Write initial prompt to a file for reference
-  const promptFile = resolve(worktreePath, '.builder-prompt.txt');
+  const promptFile = resolve(worktreePath, ".builder-prompt.txt");
   writeFileSync(promptFile, prompt);
 
   // Build the start script with role if provided
-  const scriptPath = resolve(worktreePath, '.builder-start.sh');
+  const scriptPath = resolve(worktreePath, ".builder-start.sh");
   let scriptContent: string;
 
   if (roleContent) {
     // Write role to a file and use $(cat) to avoid shell escaping issues
-    const roleFile = resolve(worktreePath, '.builder-role.md');
+    const roleFile = resolve(worktreePath, ".builder-role.md");
     // Inject the actual dashboard port into the role prompt
-    const roleWithPort = roleContent.replace(/\{PORT\}/g, String(config.dashboardPort));
+    const roleWithPort = roleContent.replace(
+      /\{PORT\}/g,
+      String(config.dashboardPort)
+    );
     writeFileSync(roleFile, roleWithPort);
+
+    let prompt = buildPromptCommand({
+      command: baseCmd,
+      systemPromptFile: roleFile,
+    });
     logger.info(`Loaded role (${roleSource})`);
     scriptContent = `#!/bin/bash
-exec ${baseCmd} --append-system-prompt "$(cat '${roleFile}')" "$(cat '${promptFile}')"
+exec ${prompt} "$(cat '${promptFile}')"
 `;
   } else {
     scriptContent = `#!/bin/bash
@@ -309,27 +363,33 @@ exec ${baseCmd} "$(cat '${promptFile}')"
   }
 
   writeFileSync(scriptPath, scriptContent);
-  chmodSync(scriptPath, '755');
+  chmodSync(scriptPath, "755");
 
   // Create tmux session running the script
-  await run(`tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${worktreePath}" "${scriptPath}"`);
+  await run(
+    `tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${worktreePath}" "${scriptPath}"`
+  );
   await run(`tmux set-option -t "${sessionName}" status off`);
 
   // Enable mouse scrolling in tmux
-  await run('tmux set -g mouse on');
-  await run('tmux set -g set-clipboard on');
-  await run('tmux set -g allow-passthrough on');
+  await run("tmux set -g mouse on");
+  await run("tmux set -g set-clipboard on");
+  await run("tmux set -g allow-passthrough on");
 
   // Copy selection to clipboard when mouse is released (pbcopy for macOS)
-  await run('tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"');
-  await run('tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"');
+  await run(
+    'tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"'
+  );
+  await run(
+    'tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"'
+  );
 
   // Start ttyd connecting to the tmux session
-  logger.info('Starting builder terminal...');
-  const customIndexPath = resolve(config.templatesDir, 'ttyd-index.html');
+  logger.info("Starting builder terminal...");
+  const customIndexPath = resolve(config.templatesDir, "ttyd-index.html");
   const hasCustomIndex = existsSync(customIndexPath);
   if (hasCustomIndex) {
-    logger.info('Using custom terminal with file click support');
+    logger.info("Using custom terminal with file click support");
   }
 
   const ttydProcess = spawnTtyd({
@@ -340,7 +400,7 @@ exec ${baseCmd} "$(cat '${promptFile}')"
   });
 
   if (!ttydProcess?.pid) {
-    fatal('Failed to start ttyd process for builder');
+    fatal("Failed to start ttyd process for builder");
   }
 
   // Rename Claude session for better history tracking
@@ -355,29 +415,35 @@ exec ${baseCmd} "$(cat '${promptFile}')"
 async function startShellSession(
   config: Config,
   shellId: string,
-  baseCmd: string,
+  baseCmd: string
 ): Promise<{ port: number; pid: number; sessionName: string }> {
   const port = await findFreePort(config);
   const sessionName = `shell-${shellId}`;
 
-  logger.info('Creating tmux session...');
+  logger.info("Creating tmux session...");
 
   // Shell mode: just launch Claude with no prompt
-  await run(`tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${config.projectRoot}" "${baseCmd}"`);
+  await run(
+    `tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${config.projectRoot}" "${baseCmd}"`
+  );
   await run(`tmux set-option -t "${sessionName}" status off`);
 
   // Enable mouse scrolling in tmux
-  await run('tmux set -g mouse on');
-  await run('tmux set -g set-clipboard on');
-  await run('tmux set -g allow-passthrough on');
+  await run("tmux set -g mouse on");
+  await run("tmux set -g set-clipboard on");
+  await run("tmux set -g allow-passthrough on");
 
   // Copy selection to clipboard when mouse is released (pbcopy for macOS)
-  await run('tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"');
-  await run('tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"');
+  await run(
+    'tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"'
+  );
+  await run(
+    'tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"'
+  );
 
   // Start ttyd connecting to the tmux session
-  logger.info('Starting shell terminal...');
-  const customIndexPath = resolve(config.templatesDir, 'ttyd-index.html');
+  logger.info("Starting shell terminal...");
+  const customIndexPath = resolve(config.templatesDir, "ttyd-index.html");
   const hasCustomIndex = existsSync(customIndexPath);
 
   const ttydProcess = spawnTtyd({
@@ -388,7 +454,7 @@ async function startShellSession(
   });
 
   if (!ttydProcess?.pid) {
-    fatal('Failed to start ttyd process for shell');
+    fatal("Failed to start ttyd process for shell");
   }
 
   // Rename Claude session for better history tracking
@@ -411,20 +477,23 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
     fatal(`Spec not found for project: ${projectId}`);
   }
 
-  const specName = basename(specFile, '.md');
+  const specName = basename(specFile, ".md");
   const builderId = projectId;
-  const safeName = specName.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-');
+  const safeName = specName
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "-")
+    .replace(/-+/g, "-");
   const branchName = `builder/${safeName}`;
   const worktreePath = resolve(config.buildersDir, builderId);
 
   // Check for corresponding plan file
-  const planFile = resolve(config.codevDir, 'plans', `${specName}.md`);
+  const planFile = resolve(config.codevDir, "plans", `${specName}.md`);
   const hasPlan = existsSync(planFile);
 
   logger.header(`Spawning Builder ${builderId} (spec)`);
-  logger.kv('Spec', specFile);
-  logger.kv('Branch', branchName);
-  logger.kv('Worktree', worktreePath);
+  logger.kv("Spec", specFile);
+  logger.kv("Branch", branchName);
+  logger.kv("Worktree", worktreePath);
 
   await ensureDirectories(config);
   await checkDependencies();
@@ -437,12 +506,14 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
   if (hasPlan) {
     initialPrompt += ` Follow the implementation plan in ${planRelPath}.`;
   }
-  initialPrompt += ` Start by reading the spec${hasPlan ? ' and plan' : ''}, then begin implementation.`;
+  initialPrompt += ` Start by reading the spec${
+    hasPlan ? " and plan" : ""
+  }, then begin implementation.`;
 
   const builderPrompt = `You are a Builder. Read codev/roles/builder.md for your full role definition. ${initialPrompt}`;
 
   // Load role
-  const role = options.noRole ? null : loadRolePrompt(config, 'builder');
+  const role = options.noRole ? null : loadRolePrompt(config, "builder");
   const commands = getResolvedCommands();
 
   const { port, pid, sessionName } = await startBuilderSession(
@@ -452,7 +523,7 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
     commands.builder,
     builderPrompt,
     role?.content ?? null,
-    role?.source ?? null,
+    role?.source ?? null
   );
 
   const builder: Builder = {
@@ -460,19 +531,19 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
     name: specName,
     port,
     pid,
-    status: 'spawning',
-    phase: 'init',
+    status: "spawning",
+    phase: "init",
     worktree: worktreePath,
     branch: branchName,
     tmuxSession: sessionName,
-    type: 'spec',
+    type: "spec",
   };
 
   upsertBuilder(builder);
 
   logger.blank();
   logger.success(`Builder ${builderId} spawned!`);
-  logger.kv('Terminal', `http://localhost:${port}`);
+  logger.kv("Terminal", `http://localhost:${port}`);
 }
 
 /**
@@ -486,12 +557,15 @@ async function spawnTask(options: SpawnOptions, config: Config): Promise<void> {
   const worktreePath = resolve(config.buildersDir, builderId);
 
   logger.header(`Spawning Builder ${builderId} (task)`);
-  logger.kv('Task', taskText.substring(0, 60) + (taskText.length > 60 ? '...' : ''));
-  logger.kv('Branch', branchName);
-  logger.kv('Worktree', worktreePath);
+  logger.kv(
+    "Task",
+    taskText.substring(0, 60) + (taskText.length > 60 ? "..." : "")
+  );
+  logger.kv("Branch", branchName);
+  logger.kv("Worktree", worktreePath);
 
   if (options.files && options.files.length > 0) {
-    logger.kv('Files', options.files.join(', '));
+    logger.kv("Files", options.files.join(", "));
   }
 
   await ensureDirectories(config);
@@ -501,13 +575,15 @@ async function spawnTask(options: SpawnOptions, config: Config): Promise<void> {
   // Build the prompt
   let prompt = taskText;
   if (options.files && options.files.length > 0) {
-    prompt += `\n\nRelevant files to consider:\n${options.files.map(f => `- ${f}`).join('\n')}`;
+    prompt += `\n\nRelevant files to consider:\n${options.files
+      .map((f) => `- ${f}`)
+      .join("\n")}`;
   }
 
   const builderPrompt = `You are a Builder. Read codev/roles/builder.md for your full role definition. ${prompt}`;
 
   // Load role
-  const role = options.noRole ? null : loadRolePrompt(config, 'builder');
+  const role = options.noRole ? null : loadRolePrompt(config, "builder");
   const commands = getResolvedCommands();
 
   const { port, pid, sessionName } = await startBuilderSession(
@@ -517,20 +593,22 @@ async function spawnTask(options: SpawnOptions, config: Config): Promise<void> {
     commands.builder,
     builderPrompt,
     role?.content ?? null,
-    role?.source ?? null,
+    role?.source ?? null
   );
 
   const builder: Builder = {
     id: builderId,
-    name: `Task: ${taskText.substring(0, 30)}${taskText.length > 30 ? '...' : ''}`,
+    name: `Task: ${taskText.substring(0, 30)}${
+      taskText.length > 30 ? "..." : ""
+    }`,
     port,
     pid,
-    status: 'spawning',
-    phase: 'init',
+    status: "spawning",
+    phase: "init",
     worktree: worktreePath,
     branch: branchName,
     tmuxSession: sessionName,
-    type: 'task',
+    type: "task",
     taskText,
   };
 
@@ -538,13 +616,16 @@ async function spawnTask(options: SpawnOptions, config: Config): Promise<void> {
 
   logger.blank();
   logger.success(`Builder ${builderId} spawned!`);
-  logger.kv('Terminal', `http://localhost:${port}`);
+  logger.kv("Terminal", `http://localhost:${port}`);
 }
 
 /**
  * Spawn builder to run a protocol
  */
-async function spawnProtocol(options: SpawnOptions, config: Config): Promise<void> {
+async function spawnProtocol(
+  options: SpawnOptions,
+  config: Config
+): Promise<void> {
   const protocolName = options.protocol!;
   validateProtocol(config, protocolName);
 
@@ -554,9 +635,9 @@ async function spawnProtocol(options: SpawnOptions, config: Config): Promise<voi
   const worktreePath = resolve(config.buildersDir, builderId);
 
   logger.header(`Spawning Builder ${builderId} (protocol)`);
-  logger.kv('Protocol', protocolName);
-  logger.kv('Branch', branchName);
-  logger.kv('Worktree', worktreePath);
+  logger.kv("Protocol", protocolName);
+  logger.kv("Branch", branchName);
+  logger.kv("Worktree", worktreePath);
 
   await ensureDirectories(config);
   await checkDependencies();
@@ -576,7 +657,7 @@ async function spawnProtocol(options: SpawnOptions, config: Config): Promise<voi
     commands.builder,
     prompt,
     role?.content ?? null,
-    role?.source ?? null,
+    role?.source ?? null
   );
 
   const builder: Builder = {
@@ -584,12 +665,12 @@ async function spawnProtocol(options: SpawnOptions, config: Config): Promise<voi
     name: `Protocol: ${protocolName}`,
     port,
     pid,
-    status: 'spawning',
-    phase: 'init',
+    status: "spawning",
+    phase: "init",
     worktree: worktreePath,
     branch: branchName,
     tmuxSession: sessionName,
-    type: 'protocol',
+    type: "protocol",
     protocolName,
   };
 
@@ -597,13 +678,16 @@ async function spawnProtocol(options: SpawnOptions, config: Config): Promise<voi
 
   logger.blank();
   logger.success(`Builder ${builderId} spawned!`);
-  logger.kv('Terminal', `http://localhost:${port}`);
+  logger.kv("Terminal", `http://localhost:${port}`);
 }
 
 /**
  * Spawn a bare shell session (no worktree, no prompt)
  */
-async function spawnShell(options: SpawnOptions, config: Config): Promise<void> {
+async function spawnShell(
+  options: SpawnOptions,
+  config: Config
+): Promise<void> {
   const shortId = generateShortId();
   const shellId = `shell-${shortId}`;
 
@@ -617,71 +701,83 @@ async function spawnShell(options: SpawnOptions, config: Config): Promise<void> 
   const { port, pid, sessionName } = await startShellSession(
     config,
     shortId,
-    commands.builder,
+    commands.builder
   );
 
   // Shell sessions are tracked as builders with type 'shell'
   // They don't have worktrees or branches
   const builder: Builder = {
     id: shellId,
-    name: 'Shell session',
+    name: "Shell session",
     port,
     pid,
-    status: 'spawning',
-    phase: 'interactive',
-    worktree: '',
-    branch: '',
+    status: "spawning",
+    phase: "interactive",
+    worktree: "",
+    branch: "",
     tmuxSession: sessionName,
-    type: 'shell',
+    type: "shell",
   };
 
   upsertBuilder(builder);
 
   logger.blank();
   logger.success(`Shell ${shellId} spawned!`);
-  logger.kv('Terminal', `http://localhost:${port}`);
+  logger.kv("Terminal", `http://localhost:${port}`);
 }
 
 /**
  * Spawn a worktree session (has worktree/branch, but no initial prompt)
  * Use case: Small features without spec/plan, like quick fixes
  */
-async function spawnWorktree(options: SpawnOptions, config: Config): Promise<void> {
+async function spawnWorktree(
+  options: SpawnOptions,
+  config: Config
+): Promise<void> {
   const shortId = generateShortId();
   const builderId = `worktree-${shortId}`;
   const branchName = `builder/worktree-${shortId}`;
   const worktreePath = resolve(config.buildersDir, builderId);
 
   logger.header(`Spawning Worktree ${builderId}`);
-  logger.kv('Branch', branchName);
-  logger.kv('Worktree', worktreePath);
+  logger.kv("Branch", branchName);
+  logger.kv("Worktree", worktreePath);
 
   await ensureDirectories(config);
   await checkDependencies();
   await createWorktree(config, branchName, worktreePath);
 
   // Load builder role
-  const role = options.noRole ? null : loadRolePrompt(config, 'builder');
+  const role = options.noRole ? null : loadRolePrompt(config, "builder");
   const commands = getResolvedCommands();
 
   // Worktree mode: launch Claude with no prompt, but in the worktree directory
   const port = await findFreePort(config);
   const sessionName = getSessionName(config, builderId);
 
-  logger.info('Creating tmux session...');
+  logger.info("Creating tmux session...");
 
   // Build launch script (with role if provided) to avoid shell escaping issues
-  const scriptPath = resolve(worktreePath, '.builder-start.sh');
+  const scriptPath = resolve(worktreePath, ".builder-start.sh");
   let scriptContent: string;
 
   if (role) {
-    const roleFile = resolve(worktreePath, '.builder-role.md');
+    const roleFile = resolve(worktreePath, ".builder-role.md");
     // Inject the actual dashboard port into the role prompt
-    const roleWithPort = role.content.replace(/\{PORT\}/g, String(config.dashboardPort));
+    const roleWithPort = role.content.replace(
+      /\{PORT\}/g,
+      String(config.dashboardPort)
+    );
     writeFileSync(roleFile, roleWithPort);
     logger.info(`Loaded role (${role.source})`);
+
+    let prompt = buildPromptCommand({
+      command: commands.builder,
+      systemPromptFile: roleFile,
+    });
+
     scriptContent = `#!/bin/bash
-exec ${commands.builder} --append-system-prompt "$(cat '${roleFile}')"
+exec ${prompt}
 `;
   } else {
     scriptContent = `#!/bin/bash
@@ -692,24 +788,34 @@ exec ${commands.builder}
   writeFileSync(scriptPath, scriptContent, { mode: 0o755 });
 
   // Create tmux session running the launch script
-  await run(`tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${worktreePath}" "${scriptPath}"`);
+  await run(
+    `tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${worktreePath}" "${scriptPath}"`
+  );
   await run(`tmux set-option -t "${sessionName}" status off`);
 
   // Enable mouse scrolling in tmux
-  await run('tmux set -g mouse on');
-  await run('tmux set -g set-clipboard on');
-  await run('tmux set -g allow-passthrough on');
+  await run("tmux set -g mouse on");
+  await run("tmux set -g set-clipboard on");
+  await run("tmux set -g allow-passthrough on");
 
   // Copy selection to clipboard when mouse is released (pbcopy for macOS)
-  await run('tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"');
-  await run('tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"');
+  await run(
+    'tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"'
+  );
+  await run(
+    'tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"'
+  );
 
   // Start ttyd connecting to the tmux session
-  logger.info('Starting worktree terminal...');
-  const customIndexPath = resolve(config.codevDir, 'templates', 'ttyd-index.html');
+  logger.info("Starting worktree terminal...");
+  const customIndexPath = resolve(
+    config.codevDir,
+    "templates",
+    "ttyd-index.html"
+  );
   const hasCustomIndex = existsSync(customIndexPath);
   if (hasCustomIndex) {
-    logger.info('Using custom terminal with file click support');
+    logger.info("Using custom terminal with file click support");
   }
 
   const ttydProcess = spawnTtyd({
@@ -720,27 +826,27 @@ exec ${commands.builder}
   });
 
   if (!ttydProcess?.pid) {
-    fatal('Failed to start ttyd process for worktree');
+    fatal("Failed to start ttyd process for worktree");
   }
 
   const builder: Builder = {
     id: builderId,
-    name: 'Worktree session',
+    name: "Worktree session",
     port,
     pid: ttydProcess.pid,
-    status: 'spawning',
-    phase: 'interactive',
+    status: "spawning",
+    phase: "interactive",
     worktree: worktreePath,
     branch: branchName,
     tmuxSession: sessionName,
-    type: 'worktree',
+    type: "worktree",
   };
 
   upsertBuilder(builder);
 
   logger.blank();
   logger.success(`Worktree ${builderId} spawned!`);
-  logger.kv('Terminal', `http://localhost:${port}`);
+  logger.kv("Terminal", `http://localhost:${port}`);
 }
 
 /**
@@ -749,10 +855,10 @@ exec ${commands.builder}
 function slugify(title: string): string {
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')  // Replace non-alphanumeric with hyphens
-    .replace(/-+/g, '-')          // Collapse multiple hyphens
-    .replace(/^-|-$/g, '')        // Trim leading/trailing hyphens
-    .slice(0, 30);                // Max 30 chars
+    .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
+    .replace(/-+/g, "-") // Collapse multiple hyphens
+    .replace(/^-|-$/g, "") // Trim leading/trailing hyphens
+    .slice(0, 30); // Max 30 chars
 }
 
 /**
@@ -774,10 +880,14 @@ interface GitHubIssue {
  */
 async function fetchGitHubIssue(issueNumber: number): Promise<GitHubIssue> {
   try {
-    const result = await run(`gh issue view ${issueNumber} --json title,body,state,comments`);
+    const result = await run(
+      `gh issue view ${issueNumber} --json title,body,state,comments`
+    );
     return JSON.parse(result.stdout);
   } catch (error) {
-    fatal(`Failed to fetch issue #${issueNumber}. Ensure 'gh' CLI is installed and authenticated.`);
+    fatal(
+      `Failed to fetch issue #${issueNumber}. Ensure 'gh' CLI is installed and authenticated.`
+    );
     throw error; // TypeScript doesn't know fatal() never returns
   }
 }
@@ -789,16 +899,18 @@ async function checkBugfixCollisions(
   issueNumber: number,
   worktreePath: string,
   issue: GitHubIssue,
-  force: boolean,
+  force: boolean
 ): Promise<void> {
   // 1. Check if worktree already exists
   if (existsSync(worktreePath)) {
-    fatal(`Worktree already exists at ${worktreePath}\nRun: af cleanup --issue ${issueNumber}`);
+    fatal(
+      `Worktree already exists at ${worktreePath}\nRun: af cleanup --issue ${issueNumber}`
+    );
   }
 
   // 2. Check for recent "On it" comments (< 24h old)
   const onItComments = issue.comments.filter((c) =>
-    c.body.toLowerCase().includes('on it'),
+    c.body.toLowerCase().includes("on it")
   );
   if (onItComments.length > 0) {
     const lastComment = onItComments[onItComments.length - 1];
@@ -807,31 +919,48 @@ async function checkBugfixCollisions(
 
     if (hoursAgo < 24) {
       if (!force) {
-        fatal(`Issue #${issueNumber} has "On it" comment from ${hoursAgo}h ago (by @${lastComment.author.login}).\nSomeone may already be working on this. Use --force to override.`);
+        fatal(
+          `Issue #${issueNumber} has "On it" comment from ${hoursAgo}h ago (by @${lastComment.author.login}).\nSomeone may already be working on this. Use --force to override.`
+        );
       }
-      logger.warn(`Warning: "On it" comment from ${hoursAgo}h ago - proceeding with --force`);
+      logger.warn(
+        `Warning: "On it" comment from ${hoursAgo}h ago - proceeding with --force`
+      );
     } else {
-      logger.warn(`Warning: Stale "On it" comment (${hoursAgo}h ago). Proceeding.`);
+      logger.warn(
+        `Warning: Stale "On it" comment (${hoursAgo}h ago). Proceeding.`
+      );
     }
   }
 
   // 3. Check for open PRs referencing this issue
   try {
-    const prResult = await run(`gh pr list --search "in:body #${issueNumber}" --json number,title --limit 5`);
+    const prResult = await run(
+      `gh pr list --search "in:body #${issueNumber}" --json number,title --limit 5`
+    );
     const openPRs = JSON.parse(prResult.stdout);
     if (openPRs.length > 0) {
       if (!force) {
-        const prList = openPRs.map((pr: { number: number; title: string }) => `  - PR #${pr.number}: ${pr.title}`).join('\n');
-        fatal(`Found ${openPRs.length} open PR(s) referencing issue #${issueNumber}:\n${prList}\nUse --force to proceed anyway.`);
+        const prList = openPRs
+          .map(
+            (pr: { number: number; title: string }) =>
+              `  - PR #${pr.number}: ${pr.title}`
+          )
+          .join("\n");
+        fatal(
+          `Found ${openPRs.length} open PR(s) referencing issue #${issueNumber}:\n${prList}\nUse --force to proceed anyway.`
+        );
       }
-      logger.warn(`Warning: Found ${openPRs.length} open PR(s) referencing issue - proceeding with --force`);
+      logger.warn(
+        `Warning: Found ${openPRs.length} open PR(s) referencing issue - proceeding with --force`
+      );
     }
   } catch {
     // Non-fatal: continue if PR check fails
   }
 
   // 4. Warn if issue is already closed
-  if (issue.state === 'CLOSED') {
+  if (issue.state === "CLOSED") {
     logger.warn(`Warning: Issue #${issueNumber} is already closed`);
   }
 }
@@ -839,13 +968,16 @@ async function checkBugfixCollisions(
 /**
  * Spawn builder for a GitHub issue (bugfix mode)
  */
-async function spawnBugfix(options: SpawnOptions, config: Config): Promise<void> {
+async function spawnBugfix(
+  options: SpawnOptions,
+  config: Config
+): Promise<void> {
   const issueNumber = options.issue!;
 
   logger.header(`Spawning Bugfix Builder for Issue #${issueNumber}`);
 
   // Fetch issue from GitHub
-  logger.info('Fetching issue from GitHub...');
+  logger.info("Fetching issue from GitHub...");
   const issue = await fetchGitHubIssue(issueNumber);
 
   const slug = slugify(issue.title);
@@ -853,12 +985,17 @@ async function spawnBugfix(options: SpawnOptions, config: Config): Promise<void>
   const branchName = `builder/bugfix-${issueNumber}-${slug}`;
   const worktreePath = resolve(config.buildersDir, builderId);
 
-  logger.kv('Title', issue.title);
-  logger.kv('Branch', branchName);
-  logger.kv('Worktree', worktreePath);
+  logger.kv("Title", issue.title);
+  logger.kv("Branch", branchName);
+  logger.kv("Worktree", worktreePath);
 
   // Check for collisions
-  await checkBugfixCollisions(issueNumber, worktreePath, issue, !!options.force);
+  await checkBugfixCollisions(
+    issueNumber,
+    worktreePath,
+    issue,
+    !!options.force
+  );
 
   await ensureDirectories(config);
   await checkDependencies();
@@ -866,11 +1003,13 @@ async function spawnBugfix(options: SpawnOptions, config: Config): Promise<void>
 
   // Comment on the issue (unless --no-comment)
   if (!options.noComment) {
-    logger.info('Commenting on issue...');
+    logger.info("Commenting on issue...");
     try {
-      await run(`gh issue comment ${issueNumber} --body "On it! Working on a fix now."`);
+      await run(
+        `gh issue comment ${issueNumber} --body "On it! Working on a fix now."`
+      );
     } catch {
-      logger.warn('Warning: Failed to comment on issue (continuing anyway)');
+      logger.warn("Warning: Failed to comment on issue (continuing anyway)");
     }
   }
 
@@ -884,7 +1023,7 @@ Follow the BUGFIX protocol: codev/protocols/bugfix/protocol.md
 **Title**: ${issue.title}
 
 **Description**:
-${issue.body || '(No description provided)'}
+${issue.body || "(No description provided)"}
 
 ## Your Mission
 1. Reproduce the bug
@@ -902,7 +1041,7 @@ Start by reading the issue and reproducing the bug.`;
   const builderPrompt = `You are a Builder. Read codev/roles/builder.md for your full role definition.\n\n${prompt}`;
 
   // Load role
-  const role = options.noRole ? null : loadRolePrompt(config, 'builder');
+  const role = options.noRole ? null : loadRolePrompt(config, "builder");
   const commands = getResolvedCommands();
 
   const { port, pid, sessionName } = await startBuilderSession(
@@ -912,20 +1051,22 @@ Start by reading the issue and reproducing the bug.`;
     commands.builder,
     builderPrompt,
     role?.content ?? null,
-    role?.source ?? null,
+    role?.source ?? null
   );
 
   const builder: Builder = {
     id: builderId,
-    name: `Bugfix #${issueNumber}: ${issue.title.substring(0, 40)}${issue.title.length > 40 ? '...' : ''}`,
+    name: `Bugfix #${issueNumber}: ${issue.title.substring(0, 40)}${
+      issue.title.length > 40 ? "..." : ""
+    }`,
     port,
     pid,
-    status: 'spawning',
-    phase: 'init',
+    status: "spawning",
+    phase: "init",
     worktree: worktreePath,
     branch: branchName,
     tmuxSession: sessionName,
-    type: 'bugfix',
+    type: "bugfix",
     issueNumber,
   };
 
@@ -933,7 +1074,7 @@ Start by reading the issue and reproducing the bug.`;
 
   logger.blank();
   logger.success(`Bugfix builder for issue #${issueNumber} spawned!`);
-  logger.kv('Terminal', `http://localhost:${port}`);
+  logger.kv("Terminal", `http://localhost:${port}`);
 }
 
 // =============================================================================
@@ -951,7 +1092,7 @@ export async function spawn(options: SpawnOptions): Promise<void> {
   // Prune stale worktrees before spawning to prevent "can't find session" errors
   // This catches orphaned worktrees from crashes, manual kills, or incomplete cleanups
   try {
-    await run('git worktree prune', { cwd: config.projectRoot });
+    await run("git worktree prune", { cwd: config.projectRoot });
   } catch {
     // Non-fatal - continue with spawn even if prune fails
   }
@@ -959,22 +1100,22 @@ export async function spawn(options: SpawnOptions): Promise<void> {
   const mode = getSpawnMode(options);
 
   switch (mode) {
-    case 'spec':
+    case "spec":
       await spawnSpec(options, config);
       break;
-    case 'bugfix':
+    case "bugfix":
       await spawnBugfix(options, config);
       break;
-    case 'task':
+    case "task":
       await spawnTask(options, config);
       break;
-    case 'protocol':
+    case "protocol":
       await spawnProtocol(options, config);
       break;
-    case 'shell':
+    case "shell":
       await spawnShell(options, config);
       break;
-    case 'worktree':
+    case "worktree":
       await spawnWorktree(options, config);
       break;
   }
