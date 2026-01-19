@@ -76,6 +76,21 @@ function generateShortId(): string {
 }
 
 /**
+ * Detect whether a command launches the Claude CLI.
+ * Supports env-prefixed commands like: "FOO=bar claude --model opus"
+ */
+function isClaudeCommand(command: string): boolean {
+  const tokens = command.trim().split(/\s+/);
+  for (const token of tokens) {
+    if (!token) continue;
+    if (token === "env") continue;
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(token)) continue;
+    return basename(token) === "claude";
+  }
+  return false;
+}
+
+/**
  * Format current date/time as YYYY-MM-DD HH:MM
  */
 function formatDateTime(): string {
@@ -410,7 +425,9 @@ exec ${baseCmd} "$(cat '${promptFile}')"
   }
 
   // Rename Claude session for better history tracking
-  renameClaudeSession(sessionName, `Builder ${builderId}`);
+  if (isClaudeCommand(baseCmd)) {
+    renameClaudeSession(sessionName, `Builder ${builderId}`);
+  }
 
   return { port, pid: ttydProcess.pid, sessionName };
 }
@@ -464,7 +481,9 @@ async function startShellSession(
   }
 
   // Rename Claude session for better history tracking
-  renameClaudeSession(sessionName, `Shell ${shellId}`);
+  if (isClaudeCommand(baseCmd)) {
+    renameClaudeSession(sessionName, `Shell ${shellId}`);
+  }
 
   return { port, pid: ttydProcess.pid, sessionName };
 }
