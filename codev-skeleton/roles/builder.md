@@ -176,7 +176,7 @@ You can check your own status and see other builders. The Architect also monitor
 Status does not update automatically; send a short status update when it changes:
 
 ```bash
-af send architect "Status: blocked — [short blocker summary]"
+af status set <builder-id> blocked --notify
 ```
 
 ## Working in a Worktree
@@ -204,9 +204,13 @@ Report `blocked` status when:
 
 **Do NOT stay blocked silently.** Communicate your blocker clearly:
 
-1. Send the Architect a short status message describing the blocker and options
-2. Add a `<!-- REVIEW(@architect): question here -->` comment in relevant code if applicable
-3. The Architect monitors builder status via `af status` and will see you're blocked
+1. Update status and notify the Architect:
+   ```bash
+   af status set <builder-id> blocked --notify
+   ```
+2. Send the Architect a short status message describing the blocker and options
+3. Add a `<!-- REVIEW(@architect): question here -->` comment in relevant code if applicable
+4. The Architect monitors builder status via `af status` and will see you're blocked
 
 Example blocker message to output:
 ```
@@ -247,12 +251,16 @@ When implementation is complete:
 2. Self-review the code
 3. Ensure all protocol artifacts are present (especially the review document for SPIDER)
 4. Create a PR: `gh pr create --title "[Spec XXXX] Description" --body "..."`
-5. Notify the Architect with the PR link/number and status:
+5. Update status and notify the Architect:
+   ```bash
+   af status set <builder-id> pr-ready --notify
+   ```
+6. Notify the Architect with the PR link/number:
    ```bash
    af send architect "Status: pr-ready — PR #123 ready for review"
    ```
-6. Wait for Architect review and approval
-7. **Merge your own PR** once approved: `gh pr merge --merge --delete-branch`
+7. Wait for Architect review and approval
+8. **Merge your own PR** once approved: `gh pr merge --merge --delete-branch`
 
 **Important**: The Builder is responsible for merging after Architect approval. This ensures the Builder sees the merge succeed and can handle any final cleanup.
 

@@ -89,10 +89,10 @@ To check current status:
 af status
 ```
 
-Status does not update automatically. When your status changes, notify the Architect with a short message:
+Status does not update automatically. Use `af status set` and notify the Architect:
 
 ```bash
-af send architect "Status: blocked — [short blocker summary]"
+af status set <builder-id> blocked --notify
 ```
 
 When you become unblocked or reach PR-ready, send a follow-up status message.
@@ -131,7 +131,11 @@ Report `blocked` status when:
 
 ### How to Report Blocked
 
-1. Send the Architect a status message with the blocker:
+1. Update status and notify the Architect:
+   ```bash
+   af status set <builder-id> blocked --notify
+   ```
+2. Send a short blocker summary:
    ```markdown
    ## Builder 0003
    - Status: blocked
@@ -141,8 +145,8 @@ Report `blocked` status when:
      2. Use a third-party library
      3. Spec meant something else?
    ```
-2. Wait for Architect guidance
-3. Once unblocked, send a status update back to `implementing`
+3. Wait for Architect guidance
+4. Once unblocked, update status back to `implementing`
 
 ## Deliverables
 
@@ -176,11 +180,15 @@ When implementation is complete:
 2. Self-review the code
 3. Write the review document (SPIDER): `codev/reviews/XXXX-spec-name.md`
 4. Create the PR and include key context in the description
-5. Notify the Architect with the PR link/number and status:
+5. Update status and notify the Architect:
+   ```bash
+   af status set <builder-id> pr-ready --notify
+   ```
+6. Send the PR link/number:
    ```bash
    af send architect "Status: pr-ready — PR #123 ready for review"
    ```
-6. The Architect will review and merge
+7. The Architect will review and merge
 
 ## Example Builder Session
 

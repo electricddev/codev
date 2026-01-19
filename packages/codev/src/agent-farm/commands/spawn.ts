@@ -545,6 +545,22 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
   // Build the prompt
   const specRelPath = `codev/specs/${specName}.md`;
   const planRelPath = `codev/plans/${planName}.md`;
+  const compliancePrompt = `NON-NEGOTIABLES (follow strictly):
+1) Read codev/roles/builder.md and then ${specRelPath}${
+    hasPlan ? ` and ${planRelPath}` : ""
+  } before coding.
+2) Study and follow SPIDER (IDER phases) in codev/protocols/spider/protocol.md and commit after each phase.
+3) Before coding, inspect in-scope files from the plan and compare them to the plan to determine current phase (resume safely after crashes).
+4) Produce the review doc at codev/reviews/${specName}.md.
+5) Create a PR and notify the Architect with the PR number/link.
+6) Update status with af status set ${builderId} <status> --notify (use blocked/pr-ready/complete).
+
+Before coding, reply with:
+- Protocol you will follow (SPIDER/TICK)
+- Artifacts you will read and produce (spec/plan to read, review doc to write)
+- Your status update plan (when you'll set blocked/pr-ready/complete)
+- Current phase assessment based on in-scope files`;
+
   let initialPrompt = `Implement the feature specified in ${specRelPath}.`;
   if (hasPlan) {
     initialPrompt += ` Follow the implementation plan in ${planRelPath}.`;
@@ -553,7 +569,7 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
     hasPlan ? " and plan" : ""
   }, then begin implementation.`;
 
-  const builderPrompt = `You are a Builder. Read codev/roles/builder.md for your full role definition. ${initialPrompt}`;
+  const builderPrompt = `You are a Builder. Read codev/roles/builder.md for your full role definition.\n\n${compliancePrompt}\n\n${initialPrompt}`;
 
   // Load role
   const role = options.noRole ? null : loadRolePrompt(config, "builder");
