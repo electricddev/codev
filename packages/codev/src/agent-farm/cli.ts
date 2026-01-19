@@ -102,13 +102,32 @@ export async function runAgentFarm(args: string[]): Promise<void> {
     });
 
   // Status command
-  program
+  const statusCmd = program
     .command('status')
-    .description('Show status of all agents')
-    .action(async () => {
-      const { status } = await import('./commands/status.js');
+    .description('Show status of all agents');
+
+  statusCmd.action(async () => {
+    const { status } = await import('./commands/status.js');
+    try {
+      await status();
+    } catch (error) {
+      logger.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+  statusCmd
+    .command('set <builder> <status>')
+    .description('Set a builder status')
+    .option('--notify', 'Notify architect of status change')
+    .action(async (builder: string, statusValue: string, options) => {
+      const { setStatus } = await import('./commands/status.js');
       try {
-        await status();
+        await setStatus({
+          builder,
+          status: statusValue,
+          notify: options.notify,
+        });
       } catch (error) {
         logger.error(error instanceof Error ? error.message : String(error));
         process.exit(1);

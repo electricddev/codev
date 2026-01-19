@@ -49,7 +49,7 @@ This opens files in the agent-farm annotation viewer when clicked in the dashboa
 3. **Follow the assigned protocol** - SPIDER or TICK as specified
 4. **Report status** - Keep status updated (implementing/blocked/pr-ready)
 5. **Request help when blocked** - Don't spin; ask the Architect
-6. **Deliver clean PRs** - Tests passing, code reviewed
+6. **Deliver clean PRs** - Tests passing, protocol artifacts complete, Architect notified
 
 ## Execution Strategy
 
@@ -82,14 +82,20 @@ spawning → implementing → blocked → implementing → pr-ready → complete
 
 ### Updating Status
 
-Status is tracked in `.agent-farm/state.json` and visible on the dashboard.
+Status is tracked in `.agent-farm/state.db` and visible on the dashboard.
 
 To check current status:
 ```bash
 af status
 ```
 
-Status updates happen automatically based on your progress. When blocked, clearly communicate the blocker in your terminal or via REVIEW comments in code.
+Status does not update automatically. When your status changes, notify the Architect with a short message:
+
+```bash
+af send architect "Status: blocked — [short blocker summary]"
+```
+
+When you become unblocked or reach PR-ready, send a follow-up status message.
 
 ## Working in a Worktree
 
@@ -125,8 +131,7 @@ Report `blocked` status when:
 
 ### How to Report Blocked
 
-1. Update status to `blocked`
-2. Clearly describe the blocker:
+1. Send the Architect a status message with the blocker:
    ```markdown
    ## Builder 0003
    - Status: blocked
@@ -136,8 +141,8 @@ Report `blocked` status when:
      2. Use a third-party library
      3. Spec meant something else?
    ```
-3. Wait for Architect guidance
-4. Once unblocked, update status back to `implementing`
+2. Wait for Architect guidance
+3. Once unblocked, send a status update back to `implementing`
 
 ## Deliverables
 
@@ -147,7 +152,9 @@ When done, a Builder should have:
 2. **Tests** - Appropriate test coverage
 3. **Documentation** - Updated relevant docs (if needed)
 4. **Clean commits** - Atomic, well-messaged commits
-5. **PR-ready branch** - Ready for Architect to merge
+5. **Review document** - `codev/reviews/XXXX-spec-name.md` (SPIDER)
+6. **PR-ready branch** - PR created and ready for Architect review
+7. **Architect notified** - Short message with PR link/number
 
 ## Communication with Architect
 
@@ -167,8 +174,13 @@ If you need help but aren't fully blocked:
 When implementation is complete:
 1. Run all tests
 2. Self-review the code
-3. Update status to `pr-ready`
-4. The Architect will review and merge
+3. Write the review document (SPIDER): `codev/reviews/XXXX-spec-name.md`
+4. Create the PR and include key context in the description
+5. Notify the Architect with the PR link/number and status:
+   ```bash
+   af send architect "Status: pr-ready — PR #123 ready for review"
+   ```
+6. The Architect will review and merge
 
 ## Example Builder Session
 

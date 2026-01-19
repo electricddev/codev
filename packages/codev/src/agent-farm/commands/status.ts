@@ -2,10 +2,36 @@
  * Status command - shows status of all agents
  */
 
-import { loadState } from '../state.js';
-import { logger } from '../utils/logger.js';
+import type { Builder } from '../types.js';
+import { loadState, updateBuilderStatus } from '../state.js';
+import { logger, fatal } from '../utils/logger.js';
 import { isProcessRunning } from '../utils/shell.js';
+import { send } from './send.js';
 import chalk from 'chalk';
+
+const VALID_STATUSES: Builder['status'][] = [
+  'spawning',
+  'implementing',
+  'blocked',
+  'pr-ready',
+  'complete',
+];
+
+function normalizeStatus(input: string): Builder['status'] {
+  const normalized = input.trim().toLowerCase().replace(/_/g, '-');
+  if (!VALID_STATUSES.includes(normalized as Builder['status'])) {
+    fatal(
+      `Invalid status: ${input}. Valid statuses: ${VALID_STATUSES.join(', ')}`
+    );
+  }
+  return normalized as Builder['status'];
+}
+
+function detectCurrentBuilderId(): string | null {
+  const cwd = process.cwd();
+  const match = cwd.match(/\.builders\/([^/]+)/);
+  return match ? match[1] : null;
+}
 
 /**
  * Display status of all agent farm processes
@@ -100,6 +126,44 @@ export async function status(): Promise<void> {
     }
   } else {
     logger.info('Annotations: none');
+  }
+}
+
+interface SetStatusOptions {
+  builder: string;
+  status: string;
+  notify?: boolean;
+}
+
+/**
+ * Set a builder's status
+ */
+export async function setStatus(options: SetStatusOptions): Promise<void> {
+  const builderId = options.builder.trim();
+  const statusValue = normalizeStatus(options.status);
+
+  const updated = updateBuilderStatus(builderId, statusValue);
+  if (!updated) {
+    fatal(`Builder not found: ${builderId}`);
+  }
+
+  logger.success(`Builder ${builderId} status set to ${statusValue}`);
+
+  if (options.notify) {
+    const currentBuilderId = detectCurrentBuilderId();
+    if (!currentBuilderId) {
+      fatal('Must run from a builder worktree to notify the Architect');
+    }
+    if (currentBuilderId !== builderId) {
+      fatal(
+        `Current builder (${currentBuilderId}) does not match target (${builderId})`
+      );
+    }
+
+    await send({
+      builder: 'architect',
+      message: `Status: ${builderId} -> ${statusValue}`,
+    });
   }
 }
 

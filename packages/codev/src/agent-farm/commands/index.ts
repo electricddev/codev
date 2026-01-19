@@ -4,7 +4,7 @@
 
 export { start } from './start.js';
 export { stop } from './stop.js';
-export { status } from './status.js';
+export { status, setStatus } from './status.js';
 export { spawn } from './spawn.js';
 export { util } from './util.js';
 export { open } from './open.js';

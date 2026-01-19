@@ -150,13 +150,13 @@ function validateSpawnOptions(options: SpawnOptions): void {
 
   if (modes.length === 0) {
     fatal(
-      'Must specify one of: --project (-p), --issue (-i), --task, --protocol, --shell, --worktree\n\nRun "af spawn --help" for examples.'
+      'Must specify one of: --project (-p), --issue (-i), --task, --protocol, --shell, --worktree\n\nRun "af spawn --help" for examples.',
     );
   }
 
   if (modes.length > 1) {
     fatal(
-      "Flags --project, --issue, --task, --protocol, --shell, --worktree are mutually exclusive"
+      "Flags --project, --issue, --task, --protocol, --shell, --worktree are mutually exclusive",
     );
   }
 
@@ -189,13 +189,13 @@ function getSpawnMode(options: SpawnOptions): BuilderType {
  */
 function loadProtocolRole(
   config: Config,
-  protocolName: string
+  protocolName: string,
 ): { content: string; source: string } | null {
   const protocolRolePath = resolve(
     config.codevDir,
     "protocols",
     protocolName,
-    "role.md"
+    "role.md",
   );
   if (existsSync(protocolRolePath)) {
     return {
@@ -212,7 +212,7 @@ function loadProtocolRole(
  */
 async function findSpecFile(
   codevDir: string,
-  projectId: string
+  projectId: string,
 ): Promise<string | null> {
   const specsDir = resolve(codevDir, "specs");
 
@@ -302,7 +302,7 @@ async function findFreePort(config: Config): Promise<number> {
 async function createWorktree(
   config: Config,
   branchName: string,
-  worktreePath: string
+  worktreePath: string,
 ): Promise<void> {
   logger.info("Creating branch...");
   try {
@@ -344,7 +344,7 @@ async function startBuilderSession(
   baseCmd: string,
   prompt: string,
   roleContent: string | null,
-  roleSource: string | null
+  roleSource: string | null,
 ): Promise<{ port: number; pid: number; sessionName: string }> {
   const port = await findFreePort(config);
   const sessionName = getSessionName(config, builderId);
@@ -365,7 +365,7 @@ async function startBuilderSession(
     // Inject the actual dashboard port into the role prompt
     const roleWithPort = roleContent.replace(
       /\{PORT\}/g,
-      String(config.dashboardPort)
+      String(config.dashboardPort),
     );
     writeFileSync(roleFile, roleWithPort);
 
@@ -388,7 +388,7 @@ exec ${baseCmd} "$(cat '${promptFile}')"
 
   // Create tmux session running the script
   await run(
-    `tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${worktreePath}" "${scriptPath}"`
+    `tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${worktreePath}" "${scriptPath}"`,
   );
   await run(`tmux set-option -t "${sessionName}" status off`);
 
@@ -399,10 +399,10 @@ exec ${baseCmd} "$(cat '${promptFile}')"
 
   // Copy selection to clipboard when mouse is released (pbcopy for macOS)
   await run(
-    'tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"'
+    'tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"',
   );
   await run(
-    'tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"'
+    'tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"',
   );
 
   // Start ttyd connecting to the tmux session
@@ -438,7 +438,7 @@ exec ${baseCmd} "$(cat '${promptFile}')"
 async function startShellSession(
   config: Config,
   shellId: string,
-  baseCmd: string
+  baseCmd: string,
 ): Promise<{ port: number; pid: number; sessionName: string }> {
   const port = await findFreePort(config);
   const sessionName = `shell-${shellId}`;
@@ -447,7 +447,7 @@ async function startShellSession(
 
   // Shell mode: just launch Claude with no prompt
   await run(
-    `tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${config.projectRoot}" "${baseCmd}"`
+    `tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${config.projectRoot}" "${baseCmd}"`,
   );
   await run(`tmux set-option -t "${sessionName}" status off`);
 
@@ -458,10 +458,10 @@ async function startShellSession(
 
   // Copy selection to clipboard when mouse is released (pbcopy for macOS)
   await run(
-    'tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"'
+    'tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"',
   );
   await run(
-    'tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"'
+    'tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"',
   );
 
   // Start ttyd connecting to the tmux session
@@ -517,7 +517,7 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
   const planFileCandidate = resolve(
     config.codevDir,
     "plans",
-    `${planNameCandidate}.md`
+    `${planNameCandidate}.md`,
   );
   let planName = planNameCandidate;
   let hasPlan = existsSync(planFileCandidate);
@@ -525,7 +525,7 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
     const fallbackPlanFile = resolve(
       config.codevDir,
       "plans",
-      `${specName}.md`
+      `${specName}.md`,
     );
     if (existsSync(fallbackPlanFile)) {
       planName = specName;
@@ -566,7 +566,7 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
     commands.builder,
     builderPrompt,
     role?.content ?? null,
-    role?.source ?? null
+    role?.source ?? null,
   );
 
   const builder: Builder = {
@@ -602,7 +602,7 @@ async function spawnTask(options: SpawnOptions, config: Config): Promise<void> {
   logger.header(`Spawning Builder ${builderId} (task)`);
   logger.kv(
     "Task",
-    taskText.substring(0, 60) + (taskText.length > 60 ? "..." : "")
+    taskText.substring(0, 60) + (taskText.length > 60 ? "..." : ""),
   );
   logger.kv("Branch", branchName);
   logger.kv("Worktree", worktreePath);
@@ -636,7 +636,7 @@ async function spawnTask(options: SpawnOptions, config: Config): Promise<void> {
     commands.builder,
     builderPrompt,
     role?.content ?? null,
-    role?.source ?? null
+    role?.source ?? null,
   );
 
   const builder: Builder = {
@@ -667,7 +667,7 @@ async function spawnTask(options: SpawnOptions, config: Config): Promise<void> {
  */
 async function spawnProtocol(
   options: SpawnOptions,
-  config: Config
+  config: Config,
 ): Promise<void> {
   const protocolName = options.protocol!;
   validateProtocol(config, protocolName);
@@ -700,7 +700,7 @@ async function spawnProtocol(
     commands.builder,
     prompt,
     role?.content ?? null,
-    role?.source ?? null
+    role?.source ?? null,
   );
 
   const builder: Builder = {
@@ -729,7 +729,7 @@ async function spawnProtocol(
  */
 async function spawnShell(
   options: SpawnOptions,
-  config: Config
+  config: Config,
 ): Promise<void> {
   const shortId = generateShortId();
   const shellId = `shell-${shortId}`;
@@ -744,7 +744,7 @@ async function spawnShell(
   const { port, pid, sessionName } = await startShellSession(
     config,
     shortId,
-    commands.builder
+    commands.builder,
   );
 
   // Shell sessions are tracked as builders with type 'shell'
@@ -775,7 +775,7 @@ async function spawnShell(
  */
 async function spawnWorktree(
   options: SpawnOptions,
-  config: Config
+  config: Config,
 ): Promise<void> {
   const shortId = generateShortId();
   const builderId = `worktree-${shortId}`;
@@ -809,7 +809,7 @@ async function spawnWorktree(
     // Inject the actual dashboard port into the role prompt
     const roleWithPort = role.content.replace(
       /\{PORT\}/g,
-      String(config.dashboardPort)
+      String(config.dashboardPort),
     );
     writeFileSync(roleFile, roleWithPort);
     logger.info(`Loaded role (${role.source})`);
@@ -832,7 +832,7 @@ exec ${commands.builder}
 
   // Create tmux session running the launch script
   await run(
-    `tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${worktreePath}" "${scriptPath}"`
+    `tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${worktreePath}" "${scriptPath}"`,
   );
   await run(`tmux set-option -t "${sessionName}" status off`);
 
@@ -843,10 +843,10 @@ exec ${commands.builder}
 
   // Copy selection to clipboard when mouse is released (pbcopy for macOS)
   await run(
-    'tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"'
+    'tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"',
   );
   await run(
-    'tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"'
+    'tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"',
   );
 
   // Start ttyd connecting to the tmux session
@@ -854,7 +854,7 @@ exec ${commands.builder}
   const customIndexPath = resolve(
     config.codevDir,
     "templates",
-    "ttyd-index.html"
+    "ttyd-index.html",
   );
   const hasCustomIndex = existsSync(customIndexPath);
   if (hasCustomIndex) {
@@ -924,12 +924,12 @@ interface GitHubIssue {
 async function fetchGitHubIssue(issueNumber: number): Promise<GitHubIssue> {
   try {
     const result = await run(
-      `gh issue view ${issueNumber} --json title,body,state,comments`
+      `gh issue view ${issueNumber} --json title,body,state,comments`,
     );
     return JSON.parse(result.stdout);
   } catch (error) {
     fatal(
-      `Failed to fetch issue #${issueNumber}. Ensure 'gh' CLI is installed and authenticated.`
+      `Failed to fetch issue #${issueNumber}. Ensure 'gh' CLI is installed and authenticated.`,
     );
     throw error; // TypeScript doesn't know fatal() never returns
   }
@@ -942,18 +942,18 @@ async function checkBugfixCollisions(
   issueNumber: number,
   worktreePath: string,
   issue: GitHubIssue,
-  force: boolean
+  force: boolean,
 ): Promise<void> {
   // 1. Check if worktree already exists
   if (existsSync(worktreePath)) {
     fatal(
-      `Worktree already exists at ${worktreePath}\nRun: af cleanup --issue ${issueNumber}`
+      `Worktree already exists at ${worktreePath}\nRun: af cleanup --issue ${issueNumber}`,
     );
   }
 
   // 2. Check for recent "On it" comments (< 24h old)
   const onItComments = issue.comments.filter((c) =>
-    c.body.toLowerCase().includes("on it")
+    c.body.toLowerCase().includes("on it"),
   );
   if (onItComments.length > 0) {
     const lastComment = onItComments[onItComments.length - 1];
@@ -963,15 +963,15 @@ async function checkBugfixCollisions(
     if (hoursAgo < 24) {
       if (!force) {
         fatal(
-          `Issue #${issueNumber} has "On it" comment from ${hoursAgo}h ago (by @${lastComment.author.login}).\nSomeone may already be working on this. Use --force to override.`
+          `Issue #${issueNumber} has "On it" comment from ${hoursAgo}h ago (by @${lastComment.author.login}).\nSomeone may already be working on this. Use --force to override.`,
         );
       }
       logger.warn(
-        `Warning: "On it" comment from ${hoursAgo}h ago - proceeding with --force`
+        `Warning: "On it" comment from ${hoursAgo}h ago - proceeding with --force`,
       );
     } else {
       logger.warn(
-        `Warning: Stale "On it" comment (${hoursAgo}h ago). Proceeding.`
+        `Warning: Stale "On it" comment (${hoursAgo}h ago). Proceeding.`,
       );
     }
   }
@@ -979,7 +979,7 @@ async function checkBugfixCollisions(
   // 3. Check for open PRs referencing this issue
   try {
     const prResult = await run(
-      `gh pr list --search "in:body #${issueNumber}" --json number,title --limit 5`
+      `gh pr list --search "in:body #${issueNumber}" --json number,title --limit 5`,
     );
     const openPRs = JSON.parse(prResult.stdout);
     if (openPRs.length > 0) {
@@ -987,15 +987,15 @@ async function checkBugfixCollisions(
         const prList = openPRs
           .map(
             (pr: { number: number; title: string }) =>
-              `  - PR #${pr.number}: ${pr.title}`
+              `  - PR #${pr.number}: ${pr.title}`,
           )
           .join("\n");
         fatal(
-          `Found ${openPRs.length} open PR(s) referencing issue #${issueNumber}:\n${prList}\nUse --force to proceed anyway.`
+          `Found ${openPRs.length} open PR(s) referencing issue #${issueNumber}:\n${prList}\nUse --force to proceed anyway.`,
         );
       }
       logger.warn(
-        `Warning: Found ${openPRs.length} open PR(s) referencing issue - proceeding with --force`
+        `Warning: Found ${openPRs.length} open PR(s) referencing issue - proceeding with --force`,
       );
     }
   } catch {
@@ -1013,7 +1013,7 @@ async function checkBugfixCollisions(
  */
 async function spawnBugfix(
   options: SpawnOptions,
-  config: Config
+  config: Config,
 ): Promise<void> {
   const issueNumber = options.issue!;
 
@@ -1037,7 +1037,7 @@ async function spawnBugfix(
     issueNumber,
     worktreePath,
     issue,
-    !!options.force
+    !!options.force,
   );
 
   await ensureDirectories(config);
@@ -1049,7 +1049,7 @@ async function spawnBugfix(
     logger.info("Commenting on issue...");
     try {
       await run(
-        `gh issue comment ${issueNumber} --body "On it! Working on a fix now."`
+        `gh issue comment ${issueNumber} --body "On it! Working on a fix now."`,
       );
     } catch {
       logger.warn("Warning: Failed to comment on issue (continuing anyway)");
@@ -1094,7 +1094,7 @@ Start by reading the issue and reproducing the bug.`;
     commands.builder,
     builderPrompt,
     role?.content ?? null,
-    role?.source ?? null
+    role?.source ?? null,
   );
 
   const builder: Builder = {

@@ -188,6 +188,14 @@ Show status of all agents.
 af status
 ```
 
+Set a builder status:
+
+```bash
+af status set <builder> <status> [--notify]
+```
+
+Valid statuses: `spawning`, `implementing`, `blocked`, `pr-ready`, `complete`.
+
 **Description:**
 
 Displays the current state of all builders and the architect:

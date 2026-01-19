@@ -135,6 +135,26 @@ export function getBuilder(id: string): Builder | null {
 }
 
 /**
+ * Update a builder's status
+ */
+export function updateBuilderStatus(
+  id: string,
+  status: Builder['status']
+): Builder | null {
+  const db = getDb();
+  const existing = db
+    .prepare('SELECT * FROM builders WHERE id = ?')
+    .get(id) as DbBuilder | undefined;
+  if (!existing) return null;
+
+  db.prepare('UPDATE builders SET status = ? WHERE id = ?').run(status, id);
+  const updated = db
+    .prepare('SELECT * FROM builders WHERE id = ?')
+    .get(id) as DbBuilder | undefined;
+  return updated ? dbBuilderToBuilder(updated) : null;
+}
+
+/**
  * Get all builders
  */
 export function getBuilders(): Builder[] {

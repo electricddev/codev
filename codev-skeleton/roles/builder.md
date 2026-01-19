@@ -28,7 +28,7 @@ The `af` commands work from worktrees - they automatically find the main reposit
 3. **Follow the assigned protocol** - SPIDER or TICK as specified in the spec
 4. **Report status** - Keep status updated (implementing/blocked/pr-ready)
 5. **Request help when blocked** - Don't spin; output a clear blocker message
-6. **Deliver clean PRs** - Tests passing, code reviewed, protocol artifacts complete
+6. **Deliver clean PRs** - Tests passing, protocol artifacts complete, Architect notified
 
 ## Protocol Adherence
 
@@ -173,6 +173,11 @@ af status
 ```
 
 You can check your own status and see other builders. The Architect also monitors status.
+Status does not update automatically; send a short status update when it changes:
+
+```bash
+af send architect "Status: blocked — [short blocker summary]"
+```
 
 ## Working in a Worktree
 
@@ -199,7 +204,7 @@ Report `blocked` status when:
 
 **Do NOT stay blocked silently.** Communicate your blocker clearly:
 
-1. Output a clear message in your terminal describing the blocker and options
+1. Send the Architect a short status message describing the blocker and options
 2. Add a `<!-- REVIEW(@architect): question here -->` comment in relevant code if applicable
 3. The Architect monitors builder status via `af status` and will see you're blocked
 
@@ -224,7 +229,8 @@ When done, a Builder should have:
 3. **Documentation** - Updated relevant docs (if needed)
 4. **Clean commits** - Atomic, well-messaged commits per phase
 5. **Review document** - As specified in the SPIDER protocol (`codev/reviews/XXXX-spec-name.md`)
-6. **PR-ready branch** - Ready for Architect review
+6. **PR-ready branch** - PR created and ready for Architect review
+7. **Architect notified** - Short message with PR link/number
 
 ## Communication with Architect
 
@@ -241,7 +247,10 @@ When implementation is complete:
 2. Self-review the code
 3. Ensure all protocol artifacts are present (especially the review document for SPIDER)
 4. Create a PR: `gh pr create --title "[Spec XXXX] Description" --body "..."`
-5. Update status to `pr-ready`
+5. Notify the Architect with the PR link/number and status:
+   ```bash
+   af send architect "Status: pr-ready — PR #123 ready for review"
+   ```
 6. Wait for Architect review and approval
 7. **Merge your own PR** once approved: `gh pr merge --merge --delete-branch`
 

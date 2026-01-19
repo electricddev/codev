@@ -215,6 +215,30 @@ describe('State Management', () => {
     });
   });
 
+  describe('updateBuilderStatus', () => {
+    it('should update status for existing builder', () => {
+      state.upsertBuilder({
+        id: 'B001',
+        name: 'test-builder',
+        port: 4210,
+        pid: 1234,
+        status: 'implementing' as const,
+        phase: 'init',
+        worktree: '/tmp/worktree',
+        branch: 'feature-branch',
+        type: 'spec' as const,
+      });
+
+      const updated = state.updateBuilderStatus('B001', 'pr-ready');
+      expect(updated?.status).toBe('pr-ready');
+    });
+
+    it('should return null for missing builder', () => {
+      const updated = state.updateBuilderStatus('B999', 'blocked');
+      expect(updated).toBeNull();
+    });
+  });
+
   describe('addUtil / removeUtil', () => {
     it('should add and remove utility terminals', () => {
       const util = {
