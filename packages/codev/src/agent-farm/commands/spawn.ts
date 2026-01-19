@@ -39,6 +39,11 @@ import {
 import { loadState, upsertBuilder } from "../state.js";
 import { loadRolePrompt } from "../utils/roles.js";
 import { buildPromptCommand } from "../../lib/prompt-command.js";
+import {
+  applyProjectSuffixToSpecName,
+  getSpecIdCandidates,
+  normalizeProjectId,
+} from "../utils/project-id.js";
 
 /**
  * Generate a short 4-character base64-encoded ID
@@ -201,18 +206,19 @@ async function findSpecFile(
   }
 
   const files = await readdir(specsDir);
+  const candidates = getSpecIdCandidates(projectId);
 
-  // Try exact match first (e.g., "0001-feature.md")
-  for (const file of files) {
-    if (file.startsWith(projectId) && file.endsWith(".md")) {
-      return resolve(specsDir, file);
-    }
-  }
-
-  // Try partial match (e.g., just "0001")
-  for (const file of files) {
-    if (file.startsWith(projectId + "-") && file.endsWith(".md")) {
-      return resolve(specsDir, file);
+  for (const candidate of candidates) {
+    const candidatePrefix = `${candidate}-`;
+    const candidateFile = `${candidate}.md`;
+    for (const file of files) {
+      const lowerFile = file.toLowerCase();
+      if (
+        lowerFile.endsWith(".md") &&
+        (lowerFile === candidateFile || lowerFile.startsWith(candidatePrefix))
+      ) {
+        return resolve(specsDir, file);
+      }
     }
   }
 
@@ -471,7 +477,7 @@ async function startShellSession(
  * Spawn builder for a spec (existing behavior)
  */
 async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
-  const projectId = options.project!;
+  const projectId = normalizeProjectId(options.project!);
   const specFile = await findSpecFile(config.codevDir, projectId);
   if (!specFile) {
     fatal(`Spec not found for project: ${projectId}`);
@@ -479,7 +485,8 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
 
   const specName = basename(specFile, ".md");
   const builderId = projectId;
-  const safeName = specName
+  const branchBaseName = applyProjectSuffixToSpecName(specName, projectId);
+  const safeName = branchBaseName
     .toLowerCase()
     .replace(/[^a-z0-9_-]/g, "-")
     .replace(/-+/g, "-");
@@ -487,8 +494,25 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
   const worktreePath = resolve(config.buildersDir, builderId);
 
   // Check for corresponding plan file
-  const planFile = resolve(config.codevDir, "plans", `${specName}.md`);
-  const hasPlan = existsSync(planFile);
+  const planNameCandidate = applyProjectSuffixToSpecName(specName, projectId);
+  const planFileCandidate = resolve(
+    config.codevDir,
+    "plans",
+    `${planNameCandidate}.md`
+  );
+  let planName = planNameCandidate;
+  let hasPlan = existsSync(planFileCandidate);
+  if (!hasPlan && planNameCandidate !== specName) {
+    const fallbackPlanFile = resolve(
+      config.codevDir,
+      "plans",
+      `${specName}.md`
+    );
+    if (existsSync(fallbackPlanFile)) {
+      planName = specName;
+      hasPlan = true;
+    }
+  }
 
   logger.header(`Spawning Builder ${builderId} (spec)`);
   logger.kv("Spec", specFile);
@@ -501,7 +525,7 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
 
   // Build the prompt
   const specRelPath = `codev/specs/${specName}.md`;
-  const planRelPath = `codev/plans/${specName}.md`;
+  const planRelPath = `codev/plans/${planName}.md`;
   let initialPrompt = `Implement the feature specified in ${specRelPath}.`;
   if (hasPlan) {
     initialPrompt += ` Follow the implementation plan in ${planRelPath}.`;
