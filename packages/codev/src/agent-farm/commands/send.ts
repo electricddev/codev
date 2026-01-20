@@ -14,6 +14,39 @@ import { loadState, getArchitect } from '../state.js';
 
 const MAX_FILE_SIZE = 48 * 1024; // 48KB limit per spec
 
+function detectBuilderCliFromScript(worktreePath: string): string | null {
+  const scriptPath = join(worktreePath, '.builder-start.sh');
+  if (!existsSync(scriptPath)) return null;
+  const content = readFileSync(scriptPath, 'utf-8');
+  const execLine = content
+    .split('\n')
+    .map((line) => line.trim())
+    .find((line) => line.startsWith('exec '));
+  if (!execLine) return null;
+
+  const tokens = execLine.replace(/^exec\s+/, '').split(/\s+/);
+  const wrappers = new Set([
+    'env',
+    'npx',
+    'npm',
+    'pnpm',
+    'yarn',
+    'bunx',
+    'node',
+    'deno',
+  ]);
+  const skipTokens = new Set(['exec', 'dlx', 'run', 'x']);
+  for (const token of tokens) {
+    if (!token) continue;
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(token)) continue;
+    const name = token.split('/').pop() || token;
+    if (skipTokens.has(name)) continue;
+    if (wrappers.has(name)) continue;
+    return name;
+  }
+  return null;
+}
+
 /**
  * Format message from architect to builder
  */
@@ -122,10 +155,20 @@ async function sendToBuilder(
       // Ignore delete-buffer errors (buffer may not exist)
     });
 
-    // Send Enter to submit (unless --no-enter)
-    if (!options.noEnter) {
-      await run(`tmux send-keys -t "${builder.tmuxSession}" Enter`);
+  const builderCli =
+    builder.worktree && existsSync(builder.worktree)
+      ? detectBuilderCliFromScript(builder.worktree)
+      : null;
+  const enterDelayMs = builderCli === 'codex' ? 150 : 0;
+
+  // Send Enter to submit (unless --no-enter)
+  if (!options.noEnter) {
+    if (enterDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, enterDelayMs));
     }
+    await run(`tmux send-keys -t "${builder.tmuxSession}" Enter`);
+  }
+
 
     logger.debug(`Sent to ${builderId}: ${message.substring(0, 50)}...`);
   } finally {
@@ -328,11 +371,11 @@ export async function send(options: SendOptions): Promise<void> {
       logger.error(`Failed for ${results.failed.length} builder(s): ${results.failed.join(', ')}`);
     }
   } else {
-    // Send to specific builder
-    try {
-      await sendToBuilder(builder!, message, options);
-      logger.success(`Message sent to builder ${builder}`);
-    } catch (error) {
+  // Send to specific builder
+  try {
+    await sendToBuilder(builder!, message, options);
+    logger.success(`Message sent to builder ${builder}`);
+  } catch (error) {
       fatal(error instanceof Error ? error.message : String(error));
     }
   }
