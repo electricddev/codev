@@ -511,11 +511,12 @@ Please read and review this specification:
 `;
 
   if (planPath) {
-    query += `- Plan file: ${planPath}\n`;
+    query += `- Plan file: ${planPath} (read this too; it defines phase scope and may be a subset of the spec)\n`;
   }
 
   query += `
 Please review:
+0. **Scope**: If a plan is provided, keep your review scoped to the plan (the plan may omit parts of the spec not in scope for this phase).
 1. Clarity and completeness of requirements
 2. Technical feasibility
 3. Edge cases and error scenarios

@@ -3,6 +3,8 @@
 ## Context
 You are reviewing implementation work at Stage 4 (IMPLEMENTING) of the workflow. A builder has completed a phase (Implement + Defend) and needs feedback before proceeding. Your job is to verify the implementation matches the spec and plan.
 
+**Plan required**: If a plan file is listed in the prompt, you MUST read it. Treat the plan as the phase scope (it may be a subset of the spec). If no plan is provided, state "Plan not provided" in your summary.
+
 ## Focus Areas
 
 1. **Spec Adherence**
