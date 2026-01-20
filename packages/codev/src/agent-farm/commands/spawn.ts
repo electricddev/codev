@@ -554,8 +554,9 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
 4) Produce the review doc at codev/reviews/${specName}.md.
 5) Create a PR and notify the Architect with the PR number/link.
 6) Update status with af status set ${builderId} <status> --notify (use blocked/pr-ready/complete).
+7) Never stop or go idle without notifying the Architect of your current status.
 
-Before coding, reply with:
+Before coding, run this checklist silently and continue without pausing:
 - Protocol you will follow (SPIDER/TICK)
 - Artifacts you will read and produce (spec/plan to read, review doc to write)
 - Your status update plan (when you'll set blocked/pr-ready/complete)
